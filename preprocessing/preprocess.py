@@ -88,8 +88,8 @@ class Preprocessor:
                     patient.set_images(self.crop_box_about_center(patient.axial_image, pixel_ilea_mean, ilea_box_size))
 
         print('Showing data...')
-        show_data([p.axial_image for p in patients], 13, 'cropped')
-        [sitk.WriteImage(patients[i].axial_image, f'images/patient_{i}.nii', True) for i in range(3)]
+        # show_data([p.axial_image for p in patients], 13, 'cropped')
+        # [sitk.WriteImage(patients[i].axial_image, f'images/patient_{i}.nii', True) for i in range(3)]
 
         # Resample
         print(f'Resampling volumes to {self.constant_volume_size}')
@@ -98,7 +98,7 @@ class Preprocessor:
             reference_center = np.array(reference_volume.TransformContinuousIndexToPhysicalPoint(np.array(reference_volume.GetSize())/2.0))
 
             patient.set_images(axial_image=self.resample(patient, reference_volume, reference_center))
-        show_data([p.axial_image for p in patients], 13, 'resample')
+        # show_data([p.axial_image for p in patients], 13, 'resample')
 
         return patients
 

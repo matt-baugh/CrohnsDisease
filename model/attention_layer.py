@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+Conv3D = tf.keras.layers.Conv3D
 
 def image_summary(name, a_m, stretch=True):
     im = tf.expand_dims(tf.expand_dims(a_m, axis=0), axis=3)
@@ -20,13 +21,13 @@ class GridAttentionBlock():
         print(f'Attention Layer: feature shape {f.shape}, gate shape {g.shape}')
 
         # Compute compatability and then normalised attentoin
-        mapped_f = tf.layers.conv3d(f, self.inter_channels, 1, strides=1, padding='SAME', data_format="channels_first")
+        mapped_f = Conv3D(self.inter_channels.value, 1, strides=1, padding='SAME', data_format="channels_first")(f)
         scale = [f.shape[i] // g.shape[i] for i in range(2, 5)]
-        mapped_g = tf.layers.conv3d(g, self.inter_channels, 1, strides=1, padding='SAME', data_format="channels_first")
+        mapped_g = Conv3D(self.inter_channels.value, 1, strides=1, padding='SAME', data_format="channels_first")(g)
         upsampled_mapped_g = tf.keras.layers.UpSampling3D(scale, data_format='channels_first')(mapped_g)
 
         combined = tf.nn.relu(tf.keras.layers.Add()([mapped_f, upsampled_mapped_g]))
-        attention = tf.layers.conv3d(combined, self.inter_channels, 1, strides=1, padding='SAME', data_format="channels_first")
+        attention = Conv3D(self.inter_channels.value, 1, strides=1, padding='SAME', data_format="channels_first")(combined)
 
         shifted_attention = tf.math.subtract(attention, tf.math.reduce_min(attention))
         normalised_attention = tf.math.divide(shifted_attention, tf.math.reduce_sum(shifted_attention))

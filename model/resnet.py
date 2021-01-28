@@ -1,7 +1,7 @@
 import tensorflow as tf
 from model.classifier import Classifier
 from model.attention_layer import GridAttentionBlock
-Conv3D = tf.layers.conv3d
+Conv3D = tf.keras.layers.Conv3D
 
 def make_parallel(fn, num_gpus, **kwargs):
     in_splits = {}
@@ -22,12 +22,13 @@ class ResNet3D(Classifier):
                   padding='VALID', act_f=tf.nn.relu):
         shortcut = shortcut_f(net, out_channels, filter_strides)
         net = tf.pad(net, tf.constant([[0, 0], [0, 0], [1, 1], [1, 1], [1, 1]]))
-        net = Conv3D(net, out_channels, filter_dims, strides=filter_strides, padding=padding, data_format="channels_first")
+
+        net = Conv3D(out_channels, filter_dims, strides=filter_strides, padding=padding, data_format="channels_first")(net)
         net = tf.layers.batch_normalization(net, axis=1)
         net = tf.nn.relu(net)
 
         net = tf.pad(net, tf.constant([[0, 0], [0, 0], [1, 1], [1, 1], [1, 1]]))
-        net = Conv3D(net, out_channels, filter_dims, strides=1, padding=padding, data_format="channels_first")
+        net = Conv3D(out_channels, filter_dims, strides=1, padding=padding, data_format="channels_first")(net)
         net = net + shortcut
         net = tf.layers.batch_normalization(net, axis=1)
         net = tf.nn.relu(net)
@@ -78,11 +79,11 @@ class ResNet3D(Classifier):
 
         return logits
 
-    def __init__(self, input_shape, lr, weight_decay, global_step, attention=False):
+    def __init__(self, input_shape, global_step, lr=5e-6, weight_decay=0, attention=False):
         super().__init__(input_shape, lr, weight_decay, global_step)
 
         def projection_shortcut(net, out_channels, filter_strides, padding='VALID'):
-            return Conv3D(net, out_channels, 1, strides=filter_strides, padding=padding, data_format="channels_first")
+            return Conv3D(out_channels, 1, strides=filter_strides, padding=padding, data_format="channels_first")(net)
         self.p_s = projection_shortcut
 
         self.dropout_prob = tf.placeholder_with_default(1.0, shape=())

@@ -17,7 +17,7 @@ class Patient:
     def get_id(self):
         return self.group + str(self.index)
 
-    def set_paths(self, axial, coronal, axial_postcon):
+    def set_paths(self, axial, coronal='', axial_postcon=''):
         self.axial = axial
         self.coronal = coronal
         self.axial_postcon = axial_postcon

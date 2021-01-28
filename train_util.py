@@ -54,7 +54,7 @@ def print_statistics(loss, labels, preds):
     print(report(labels, preds))
 
 # Test
-def test_accuracy(sess, network, batch, iterator_te, iterator_te_next, feature_shape):
+def test_accuracy(sess, network, iterator_te, iterator_te_next, feature_shape):
     accuracies, all_labels, all_preds, losses = [], [], [], []
     summary_te = None
 

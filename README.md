@@ -4,11 +4,16 @@ Final year Masters project at Imperial College on tackling Crohn's Disease
 
 arXiv: https://arxiv.org/abs/1909.00276
 
-Paper to be presented at MICCAI 2019, Shenzhen
+Paper was presented at MICCAI PRIME 2019, Shenzhen
 
 In this work we establish a baseline for binary prediction of terminal ileal Crohn's disease in abnormal and healthy MRI volumes, using deep learning
 
 To this end we use a small 3D ResNet with added soft attention layers
+
+# User guide
+To infer a prediction of whether or not a given 3D MR has Crohn's disease, configure <tt>/run_crohns.sh</tt> to test mode, and specify the directory of the trained model. Then execute <tt>bash run_crohns.sh</tt>.
+
+(Process to be streamlined in future update, i.e. parameters for 3D MR image path and coordinates)
 
 ## Repo Guide
 Brief explanation of important files

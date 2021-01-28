@@ -10,13 +10,15 @@ from pipeline import *
 class Trainer:
     def __init__(self, args, model):
         # Paths
-        self.logdir = os.path.join('/vol/bitbucket/rh2515/CrohnsDisease/', args.logdir)
+        self.args = args
+        self.logdir = os.path.join(args.base, args.logdir)
         self.fold = args.fold
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
+        self.model_save_path = os.path.join(args.base, args.model_path)
 
-        self.train_data = args.train_datapath
-        self.test_data = args.test_datapath
+        self.train_data = os.path.join(args.base, args.train_datapath)
+        self.test_data = os.path.join(args.base, args.test_datapath)
         self.write_log(f'Fold: {self.fold}')
 
         # Data processing
@@ -68,13 +70,18 @@ class Trainer:
         writer.add_summary(f1_s, int(batch))
 
     def train(self):
+        # Model saving
+        # tf.reset_default_graph()
+
         # Dataset pipeline
-        pipeline = Pipeline(self.decode_record, self.train_data, self.test_data)
-        iterator, iterator_te = pipeline.create(self.record_shape, self.batch_size, self.test_size)
+        pipeline = Pipeline(self.decode_record, self.record_shape)
+        iterator = pipeline.create_train(self.train_data, self.batch_size)
+        iterator_te = pipeline.create_test(self.test_data, self.test_size)
         iterator_next, iterator_te_next = iterator.get_next(), iterator_te.get_next()
 
         # Initialise classification network
-        network = self.model(self.feature_shape, self.learning_rate, self.weight_decay, self.global_step, self.attention)
+        network = self.model(self.feature_shape, self.global_step, lr=self.learning_rate,
+                            weight_decay=self.weight_decay, attention=self.attention)
 
         # Initialise augmentation
         augmentor = Augmentor(self.feature_shape)
@@ -98,13 +105,19 @@ class Trainer:
             # Summary writers
             summary_writer_tr = self.create_summary('train', sess.graph)
             summary_writer_te = self.create_summary('test', sess.graph)
+            saver = tf.train.Saver()
 
             train_accuracies = []
             for batch in range(self.num_batches):
                 # Evaluate performance on test set at intervals
                 if batch % self.test_evaluation_period == 0:
-                    summary_te, average_accuracy, overall_loss, preds, all_labels = test_accuracy(sess, network, batch, iterator_te, iterator_te_next, self.feature_shape)
+                    summary_te, average_accuracy, overall_loss, preds, all_labels = test_accuracy(sess, network, iterator_te, iterator_te_next, self.feature_shape)
                     summary_writer_te.add_summary(summary_te, int(batch))
+
+                    if overall_loss < self.best['loss']:
+                        saver.save(sess, self.model_save_path)
+                        print('===================================> Model saved!')
+
                     self.update_stats(batch, overall_loss, preds, all_labels)
                     self.log_metrics(sess, batch, summary_writer_te, average_accuracy, f1_score(all_labels, preds))
 

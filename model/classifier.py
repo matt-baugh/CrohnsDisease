@@ -11,6 +11,8 @@ class Classifier:
         self.global_step = global_step
 
     def build(self, net_output):
+        self.logits = net_output
+        self.probabilities = tf.nn.softmax(self.logits)
         self.predictions = tf.argmax(tf.nn.softmax(net_output), axis=1)
 
         self.ground_truth = tf.cast(self.batch_labels, tf.float32)

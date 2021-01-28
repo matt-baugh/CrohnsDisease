@@ -4,6 +4,7 @@ import tensorflow as tf
 from train import Trainer
 from model.resnet import ResNet3D
 from train_util import generate_decode_function
+from infer import Infer
 
 import os
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -14,6 +15,7 @@ def parseArguments():
 
     # Positional mandatory arguments
     parser.add_argument("crohns_or_polyps", help="Task to run", choices=['Crohns_MRI','Polyps_CT'])
+    parser.add_argument("base", help="Path to project base")
     parser.add_argument("train_datapath", help="Path to train TF Record")
     parser.add_argument("test_datapath", help="Path to test TF Record")
     parser.add_argument("-record_shape", help="Dimensions of a single dataset feature")
@@ -25,6 +27,8 @@ def parseArguments():
     parser.add_argument("-lD", "--logdir", help="Directory to log Tensorboard to", default='logdir')
     parser.add_argument("-nB", "--num_batches", help="Number of total training batches", default=None)
     parser.add_argument("-at", "--attention", help="Inclusion of attention layers in network", default=0)
+    parser.add_argument("-mode", "--mode", help="Training or testing mode", default="test")
+    parser.add_argument("-mP", "--model_path", help="Path to model save", default="CrohnsDisease/trained_models/crohns_model")
     # parser.add_argument("-ma", "--mixedAttention", help="Inclusion of mixed hard-soft attention loss", default=0)
     # parser.add_argument("-lc", "--localisation", help="Terminal Ileum localisation task", default=0)
     # parser.add_argument("-de", "--deeper", help="Depth of network", default=0)
@@ -62,5 +66,13 @@ if __name__ == '__main__':
         model = ResNet3D
     args.__dict__['decode_record'] = decode_record
 
-    trainer = Trainer(args, model)
-    trainer.train()
+    if args.mode == 'train':
+        trainer = Trainer(args, model)
+        trainer.train()
+    elif args.mode == 'test':
+        infer = Infer(args, model)
+        infer.test(os.path.join(args.base, args.test_datapath))
+
+        axial_path = '/vol/bitbucket/rh2515/MRI_Crohns/A/A36 Axial T2.nii'
+        coords = [198, 134, 31]
+        infer.infer(axial_path, coords, args.record_shape, args.feature_shape)
