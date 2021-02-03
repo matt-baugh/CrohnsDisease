@@ -3,6 +3,7 @@ import SimpleITK as sitk
 import random
 from datetime import datetime
 from sklearn.model_selection import StratifiedKFold
+import numpy as np
 
 def numpy_dataset_name(set, suffix=''):
     return f'{suffix}_{set}.npz'
@@ -26,7 +27,7 @@ class NumpyGenerator:
 
     def _generate_dataset(self, patients, set='train', fold=''):
         dataset_filename = os.path.join(self.out_path,
-                                        numpy_dataset_name(f'{set}_{fold}', self.suffix)))
+                                        numpy_dataset_name(f'{set}_{fold}', self.suffix))
 
         abnormal = [p.index for p in patients if p.group == 'A']
         healthy = [p.index for p in patients if p.group == 'I']
@@ -34,7 +35,6 @@ class NumpyGenerator:
         self.write_log(f'A - {abnormal}')
         self.write_log(f'I - {healthy}')
         self.write_log([p.severity for p in patients])
-
 
         axial_t2 = np.stack([sitk.GetArrayFromImage(p.axial_image)
                              for p in patients])

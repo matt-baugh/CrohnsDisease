@@ -116,10 +116,11 @@ class Preprocessor:
         centering_transform = sitk.TranslationTransform(self.dimension)
         img_center = np.array(img.TransformContinuousIndexToPhysicalPoint(np.array(img.GetSize())/2.0))
         centering_transform.SetOffset(np.array(transform.GetInverse().TransformPoint(img_center) - reference_center))
-        centered_transform.AddTransform(centering_transform)
+
+        combined_transform = sitk.CompositeTransform([centered_transform, centering_transform])
 
         # Using the linear interpolator as these are intensity images
-        return sitk.Resample(img, reference_volume, centered_transform, sitk.sitkLinear, 0.0)
+        return sitk.Resample(img, reference_volume, combined_transform, sitk.sitkLinear, 0.0)
 
     def region_grow_crop(self, patient):
         image = patient.axial_image

@@ -16,7 +16,7 @@ print('record_size', reference_size)
 # Path setting
 data_path = '/vol/bitbucket/rh2515/MRI_Crohns'
 label_path = '/vol/bitbucket/rh2515/MRI_Crohns/labels'
-record_out_path = '/vol/bitbucket/rh2515/MRI_Crohns/tfrecords/ti_imb_generic'
+record_out_path = '/vol/bitbucket/mb4617/MRI_Crohns/numpy_datasets/ti_imb_generic'
 record_suffix = 'axial_t2_only'
 
 # Load data
