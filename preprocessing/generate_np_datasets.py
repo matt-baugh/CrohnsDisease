@@ -36,7 +36,6 @@ metadata.patients = preprocessor.process(metadata.patients, ileum_crop=False, re
 
 # Serialize data into numpy files 
 numpy_generator = NumpyGenerator(record_out_path, record_suffix)
-# record_generator.generate_train_test(test_proportion, metadata.patients)
 numpy_generator.generate_cross_folds(k, metadata.patients)
 
 print('Done')
