@@ -22,7 +22,7 @@ def _random_crop_gen(out_dims):
         # Have to crop first dimension manually, as pytorch only does last 2
         # First tensor dimension is channel, so ignore
         dim_0_diff = x.shape[1] - out_dims[0]
-        dim_0_crop = torch.randint(dim_0_diff)
+        dim_0_crop = np.random.randint(dim_0_diff)
         return final_crop(x[:, dim_0_crop:dim_0_crop+out_dims[0], :, :])
     return _random_crop_helper
 
@@ -41,7 +41,7 @@ class MRIDataset(Dataset):
     def __init__(self, dataset_path, train, out_dims, transforms=None):
         ## Load dataset
         np_dataset_file = np.load(dataset_path)
-        self.data = TensorDataset(torch.from_numpy(np_dataset_file['axial_t2']),
+        self.data = TensorDataset(torch.from_numpy(np_dataset_file['axial_t2']).float(),
                                   torch.from_numpy(np_dataset_file['label']))
 
         self.out_dims = out_dims
@@ -75,9 +75,9 @@ class MRIDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data[idx]
 
-        sample = (torch.unsqeeze(sample[0]), sample[1])
+        sample = (torch.unsqueeze(sample[0], 0), sample[1])
 
         if self.transforms:
-            sample = self.transforms[sample]
+            sample = (self.transforms(sample[0]), sample[1])
 
         return sample
