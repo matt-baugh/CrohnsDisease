@@ -75,6 +75,8 @@ class MRIDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data[idx]
 
+        sample = (torch.unsqeeze(sample[0]), sample[1])
+
         if self.transforms:
             sample = self.transforms[sample]
 
