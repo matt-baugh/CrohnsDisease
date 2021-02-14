@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from train_util import report
 from mri_dataset import MRIDataset
+from pytorch_resnet import PytorchResNet3D
 
 USE_GPU = True
 
@@ -131,10 +132,7 @@ class PytorchTrainer:
 
         train_step = 0
 
-        network = self.model
-        # Attention
-        # Feature shape ??
-        # Dropout probability
+        network = PytorchResNet3D(self.feature_shape, self.attention, self.dropout_train_prob)
         optimiser = Adam(network.parameters(), lr=self.learning_rate)
 
         train_accuracies = []
