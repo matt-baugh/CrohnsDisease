@@ -1,16 +1,22 @@
 import os
 from sklearn.metrics import f1_score
+from sklearn.metrics import classification_report
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 import torch.nn.functional as F
 
-from train_util import report
-from mri_dataset import MRIDataset
-from pytorch_resnet import PytorchResNet3D
+from pytorch.mri_dataset import MRIDataset
+from pytorch.pytorch_resnet import PytorchResNet3D
 
 USE_GPU = True
+
+
+def report(labels, preds):
+    if len(set(preds)) > 1:
+        return classification_report(labels, preds, target_names=['healthy', 'abnormal'])
+    return 'Only one class predicted'
 
 
 class PytorchTrainer:
