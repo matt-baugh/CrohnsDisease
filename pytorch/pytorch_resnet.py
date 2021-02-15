@@ -17,7 +17,7 @@ class ResidualBlock3D(nn.Module):
         self.shortcut = nn.Sequential()
 
         if stride != 1 or inchannel != outchannel:
-            self.shortcut = nn.Conv2d(inchannel, outchannel,
+            self.shortcut = nn.Conv3d(inchannel, outchannel,
                                       kernel_size=1, stride=stride,
                                       padding=0, bias=False)
         else:
@@ -52,12 +52,12 @@ class GridAttentionBlock(nn.Module):
         self.map_f = nn.Conv3d(feat_chan, self.inter_channels, 1, bias=False)
         self.map_g = nn.Sequential(
             nn.Conv3d(gate_chan, self.inter_channels, 1),
-            nn.Upsample(scale_factor=tuple(self.scale), mode='trilinear')
+            nn.Upsample(scale_factor=tuple(self.scale), mode='trilinear', align_corners=True)
         )
 
         self.attend = nn.Sequential(
             nn.ReLU(inplace=True),
-            nn.Conv3d(self.inter_channels, 1),
+            nn.Conv3d(self.inter_channels, 1, 1),
             nn.Sigmoid()
         )
 
@@ -111,10 +111,10 @@ class PytorchResNet3D(nn.Module):
         if self.use_attention:
             self.attention_block = GridAttentionBlock(
                 64, self.layer_out_shapes[0],
-                256, self.layer_out_shapes[2])
+                256, self.layer_out_shapes[-1])
             self.classify_attention = nn.Sequential(
                 nn.Flatten(),
-                nn.Linear(64 * self.layer_out_shapes[0].prod(), 2),
+                nn.Linear(self.attention_block.inter_channels * self.layer_out_shapes[0].prod(), 2),
                 nn.Dropout(self.dropout_prob)
             )
         else:
@@ -124,7 +124,7 @@ class PytorchResNet3D(nn.Module):
     def make_layer(self, block_list):
         blocks = []
         for out_chan, stride in block_list:
-            blocks.append(ResidualBlock3D(self.inchannels, out_chan, stride))
+            blocks.append(ResidualBlock3D(self.in_chan, out_chan, stride))
             self.in_chan = out_chan
         return nn.Sequential(*blocks)
 

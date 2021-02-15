@@ -20,7 +20,7 @@ do
   -py=true \
   -at=1 \
   -f=${fold} \
-  -bS=64 \
+  -bS=16 \
   -lD=CrohnsDisease/log_attention/${TIMESTAMP}/ \
   -nB=1200 \
   -mode="train" \
