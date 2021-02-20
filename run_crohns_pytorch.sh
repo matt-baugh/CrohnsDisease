@@ -20,9 +20,9 @@ do
   -py=true \
   -at=1 \
   -f=${fold} \
-  -bS=16 \
-  -lD=CrohnsDisease/log_attention/${TIMESTAMP}/ \
-  -nB=1200 \
+  -bS=64 \
+  -lD=CrohnsDisease/log_attention/${TIMESTAMP}fold${fold}/ \
+  -nB=20 \
   -mode="train" \
   -mP="CrohnsDisease/trained_models/best_model/fold${fold}"
 done

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import torch.nn as nn
 
 
@@ -57,8 +58,7 @@ class GridAttentionBlock(nn.Module):
 
         self.attend = nn.Sequential(
             nn.ReLU(inplace=True),
-            nn.Conv3d(self.inter_channels, 1, 1),
-            nn.Sigmoid()
+            nn.Conv3d(self.inter_channels, 1, 1)
         )
 
     def forward(self, f, g):
@@ -67,7 +67,12 @@ class GridAttentionBlock(nn.Module):
         mapped_g = self.map_g(g)
 
         attention = self.attend(mapped_f + mapped_g)
-        return attention * mapped_f
+        # Shift each sample to have a minimum of zero
+        shifted_att = attention - torch.amin(attention, dim=[1, 2, 3], keepdim=True)
+        # Scale samples so each sum's to 1
+        scaled_att = shifted_att / torch.sum(shifted_att, dim=[1, 2, 3], keepdim=True)
+
+        return scaled_att * mapped_f
 
 
 class PytorchResNet3D(nn.Module):
@@ -138,7 +143,6 @@ class PytorchResNet3D(nn.Module):
 
         if self.use_attention:
             attended_conv1 = self.attention_block(conv1_out, conv3_out)
-            out += self.classify_attention(attended_conv1)
-            out /= 2
+            out = (out + self.classify_attention(attended_conv1)) / 2
 
         return out

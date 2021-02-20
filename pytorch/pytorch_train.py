@@ -15,7 +15,7 @@ USE_GPU = True
 
 def report(labels, preds):
     if len(set(preds)) > 1:
-        return classification_report(labels, preds, target_names=['healthy', 'abnormal'])
+        return classification_report(labels, preds, target_names=['healthy', 'abnormal'], zero_division=0)
     return 'Only one class predicted'
 
 
@@ -27,7 +27,7 @@ class PytorchTrainer:
         self.fold = args.fold
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
-        self.model_save_path = f"fold{self.fold}" # os.path.join(args.base, args.model_path)
+        self.model_save_path = os.path.join(args.base, args.model_path)
 
         self.train_data_path = os.path.join(args.base, args.train_datapath)
         self.test_data_path = os.path.join(args.base, args.test_datapath)
@@ -37,7 +37,7 @@ class PytorchTrainer:
 
         self.summary = SummaryWriter(self.logdir, f'fold{self.fold}')
 
-        self.write_log(f'Fold: {self.fold}')
+        self.write_log(f'Fold: {self.fold}', 0)
 
         if USE_GPU and torch.cuda.is_available():
             print("USING GPU")
@@ -64,8 +64,8 @@ class PytorchTrainer:
         starter_learning_rate = 5e-6
         self.learning_rate = starter_learning_rate
 
-        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True)
-        self.test_loader = DataLoader(self.test_dataset, self.test_size, False)
+        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True, num_workers=8, persistent_workers=True)
+        self.test_loader = DataLoader(self.test_dataset, self.test_size, False, num_workers=8, persistent_workers=True)
 
         # Best Test Results
         self.best = {'iteration': None,
@@ -75,8 +75,8 @@ class PytorchTrainer:
                      'MaRIAs': None,
                      'loss': float("inf")}
 
-    def write_log(self, line):
-        self.summary.add_text('Log', line)
+    def write_log(self, line, train_step):
+        self.summary.add_text('Log', line, train_step)
 
     def log_statistics(self, tag, loss, acc, f1, train_step):
         self.summary.add_scalar('Loss/' + tag, loss, train_step)
@@ -116,7 +116,8 @@ class PytorchTrainer:
 
         test_avg_acc = (all_preds == all_binary_labels).float().mean()
         test_avg_loss = all_losses.mean()
-        test_f1 = f1_score(all_binary_labels, all_preds)
+        test_f1 = f1_score(all_binary_labels, all_preds, zero_division=0)
+        test_report = report(all_binary_labels, all_preds)
 
         if test_avg_loss < self.best['loss']:
 
@@ -125,17 +126,17 @@ class PytorchTrainer:
             self.best['preds'] = all_preds
             self.best['labels'] = all_binary_labels
             self.best['MaRIAs'] = all_y
-            self.best['report'] = report(all_binary_labels, all_preds)
+            self.best['report'] = test_report
 
             torch.save(network.state_dict(), self.model_save_path)
             print()
-            print('===========================> Model (almost) saved!')
+            print('===========================> Model saved!')
             print()
 
         print('Test statistics')
         print('Average Loss:       ', test_avg_loss)
         print('Prediction balance: ', all_preds.mean())
-        print(report(all_binary_labels, all_preds))
+        print(test_report)
         print()
 
         self.log_statistics('test', test_avg_loss, test_avg_acc, test_f1, train_step)
@@ -192,9 +193,10 @@ class PytorchTrainer:
                 train_step += 1
 
         print('Training finished!')
-        self.write_log(f'Best loss (iteration {self.best["iteration"]}): {self.best["loss"]}')
-        self.write_log(f'with predictions: {self.best["preds"]}')
-        self.write_log(f'of labels:        {self.best["labels"]}')
-        self.write_log(f'with MaRIA scores:{self.best["MaRIAs"]}')
-        self.write_log(self.best["report"])
-        self.write_log('')
+        print(self.best["report"])
+
+        self.write_log(f'Best loss (iteration {self.best["iteration"]}): {self.best["loss"]}', train_step)
+        self.write_log(f'with predictions: {self.best["preds"]}', train_step)
+        self.write_log(f'of labels:        {self.best["labels"]}', train_step)
+        self.write_log(f'with MaRIA scores:{self.best["MaRIAs"]}', train_step)
+        self.write_log(self.best["report"], train_step)
