@@ -38,53 +38,55 @@ def _center_crop_gen(out_dims):
 
 
 class MRIDataset(Dataset):
-    def __init__(self, dataset_path, train, out_dims, transforms=None, preprocess=None):
+    def __init__(self, dataset_path, train, out_dims, transforms=None, preprocess=False):
         ## Load dataset
         np_dataset_file = np.load(dataset_path)
 
-        axial_data = np_dataset_file['axial_t2']
-
-        if preprocess:
-            axial_data = preprocess(axial_data)
-        self.data = TensorDataset(torch.Tensor(axial_data).float(),
-                                  torch.from_numpy(np_dataset_file['label']))
+        axial_data = torch.from_numpy(np_dataset_file['axial_t2']).float()
 
         self.out_dims = out_dims
         self.train = train
+        self.preprocess = preprocess
 
         normalize_3d = T.Lambda(
             lambda x: (x - torch.mean(x, dim=[1, 2, 3], keepdim=True)) /
                        torch.std(x, dim=[1, 2, 3], keepdim=True)
         )
 
-        # ## Define transforms to be applied to data
-        # if transforms is not None:
-        #     self.transforms = transforms
-        # elif train:
-        #     self.transforms = T.Compose([
-        #         T.Lambda(_crop_out_edges),
-        #         T.Lambda(_random_rotate),
-        #         T.RandomHorizontalFlip(),
-        #         T.Lambda(_random_crop_gen(out_dims)),
-        #         T.Lambda(lambda x: x + 0.005 * torch.randn_like(x)),
-        #         normalize_3d
-        #     ])
-        # else:
-        #     self.transforms = T.Compose([
-        #         T.Lambda(_center_crop_gen(out_dims)),
-        #         normalize_3d
-        #     ])
-        self.transforms = None
+        ## Define transforms to be applied to data
+        if transforms is not None:
+            self.transforms = transforms
+        elif train:
+            self.transforms = T.Compose([
+                T.Lambda(_crop_out_edges),
+                T.Lambda(_random_rotate),
+                T.RandomHorizontalFlip(),
+                T.Lambda(_random_crop_gen(out_dims)),
+                T.Lambda(lambda x: x + 0.005 * torch.randn_like(x)),
+                normalize_3d
+            ])
+        else:
+            self.transforms = T.Compose([
+                T.Lambda(_center_crop_gen(out_dims)),
+                normalize_3d
+            ])
+
+        if preprocess:
+            axial_data = torch.stack([
+                torch.squeeze(self.transforms(torch.unsqueeze(a, 0))) for a in axial_data
+            ], 0)
+        self.data = TensorDataset(axial_data,
+                                  torch.from_numpy(np_dataset_file['label']))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         axial_data, label = self.data[idx]
-        if not self.train:
-            axial_data = torch.unsqueeze(axial_data, 0)
 
-        if self.transforms:
-            axial_data = self.transforms(axial_data)
+        sample_data = torch.unsqueeze(axial_data, 0)
 
-        return axial_data, label
+        if not self.preprocess and self.transforms:
+            sample_data = self.transforms(sample_data)
+
+        return sample_data, label

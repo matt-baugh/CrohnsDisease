@@ -9,7 +9,6 @@ import torch.nn.functional as F
 
 from pytorch.mri_dataset import MRIDataset
 from pytorch.pytorch_resnet import PytorchResNet3D
-from augmentation.augment_data import Augmentor
 
 USE_GPU = True
 
@@ -33,9 +32,8 @@ class PytorchTrainer:
         self.train_data_path = os.path.join(args.base, args.train_datapath)
         self.test_data_path = os.path.join(args.base, args.test_datapath)
 
-        self.augmentor = Augmentor(args.feature_shape)
         self.train_dataset = MRIDataset(self.train_data_path, True, args.feature_shape)
-        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, preprocess=self.augmentor.process_test_set)
+        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, preprocess=True)
 
         self.summary = SummaryWriter(self.logdir, f'fold{self.fold}')
 
@@ -65,8 +63,8 @@ class PytorchTrainer:
         self.dropout_train_prob = 0.5
         starter_learning_rate = 5e-6
         self.learning_rate = starter_learning_rate
-        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True, collate_fn=self.collate_wrapper_train)#, num_workers=4, persistent_workers=True)
-        self.test_loader = DataLoader(self.test_dataset, self.test_size, False)#, num_workers=4, persistent_workers=True)
+        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True, num_workers=4, persistent_workers=True)
+        self.test_loader = DataLoader(self.test_dataset, self.test_size, False, num_workers=4, persistent_workers=True)
 
         # Best Test Results
         self.best = {'iteration': None,
@@ -75,25 +73,6 @@ class PytorchTrainer:
                      'labels': None,
                      'MaRIAs': None,
                      'loss': float("inf")}
-
-    def collate_wrapper_train(self, datapairs):
-        trans_data = list(zip(*datapairs))
-
-        np_data = [t.numpy() for t in trans_data[0]]
-        augmented_data = self.augmentor.augment_batch(np_data)
-        axial_data = torch.tensor(augmented_data)
-        axial_data = torch.unsqueeze(axial_data, 1)
-        return axial_data, torch.stack(trans_data[1], 0)
-
-    # def collate_wrapper_test(self, datapairs):
-    #     trans_data = list(zip(*datapairs))
-    #
-    #     np_data = [t.numpy() for t in trans_data[0]]
-    #     augmented_data = self.augmentor.process_test_set(np_data)
-    #     print(type(augmented_data))
-    #     axial_data = torch.tensor(augmented_data)
-    #     axial_data = torch.unsqueeze(axial_data, 1)
-    #     return axial_data, torch.stack(trans_data[1], 0)
 
     def write_log(self, line, train_step):
         self.summary.add_text('Log', line, train_step)
@@ -130,7 +109,6 @@ class PytorchTrainer:
         all_y = torch.cat(all_y)
 
         # Convert back to cpu so can be converted to numpy for statistics
-        # TODO: should I just do statistics manually?
         all_preds = all_preds.cpu()
         all_binary_labels = all_binary_labels.cpu()
 
