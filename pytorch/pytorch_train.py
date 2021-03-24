@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from pytorch.mri_dataset import MRIDataset
 from pytorch.pytorch_resnet import PytorchResNet3D
+from augmentation.augment_data import Augmentor
 
 USE_GPU = True
 
@@ -32,8 +33,9 @@ class PytorchTrainer:
         self.train_data_path = os.path.join(args.base, args.train_datapath)
         self.test_data_path = os.path.join(args.base, args.test_datapath)
 
+        self.augmentor = Augmentor(args.feature_shape)
         self.train_dataset = MRIDataset(self.train_data_path, True, args.feature_shape)
-        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape)
+        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, preprocess=self.augmentor.process_test_set)
 
         self.summary = SummaryWriter(self.logdir, f'fold{self.fold}')
 
@@ -63,9 +65,8 @@ class PytorchTrainer:
         self.dropout_train_prob = 0.5
         starter_learning_rate = 5e-6
         self.learning_rate = starter_learning_rate
-
-        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True, num_workers=8, persistent_workers=True)
-        self.test_loader = DataLoader(self.test_dataset, self.test_size, False, num_workers=8, persistent_workers=True)
+        self.train_loader = DataLoader(self.train_dataset, self.batch_size, True, collate_fn=self.collate_wrapper_train)#, num_workers=4, persistent_workers=True)
+        self.test_loader = DataLoader(self.test_dataset, self.test_size, False)#, num_workers=4, persistent_workers=True)
 
         # Best Test Results
         self.best = {'iteration': None,
@@ -74,6 +75,25 @@ class PytorchTrainer:
                      'labels': None,
                      'MaRIAs': None,
                      'loss': float("inf")}
+
+    def collate_wrapper_train(self, datapairs):
+        trans_data = list(zip(*datapairs))
+
+        np_data = [t.numpy() for t in trans_data[0]]
+        augmented_data = self.augmentor.augment_batch(np_data)
+        axial_data = torch.tensor(augmented_data)
+        axial_data = torch.unsqueeze(axial_data, 1)
+        return axial_data, torch.stack(trans_data[1], 0)
+
+    # def collate_wrapper_test(self, datapairs):
+    #     trans_data = list(zip(*datapairs))
+    #
+    #     np_data = [t.numpy() for t in trans_data[0]]
+    #     augmented_data = self.augmentor.process_test_set(np_data)
+    #     print(type(augmented_data))
+    #     axial_data = torch.tensor(augmented_data)
+    #     axial_data = torch.unsqueeze(axial_data, 1)
+    #     return axial_data, torch.stack(trans_data[1], 0)
 
     def write_log(self, line, train_step):
         self.summary.add_text('Log', line, train_step)
@@ -116,7 +136,7 @@ class PytorchTrainer:
 
         test_avg_acc = (all_preds == all_binary_labels).float().mean()
         test_avg_loss = all_losses.mean()
-        test_f1 = f1_score(all_binary_labels, all_preds, zero_division=0)
+        test_f1 = f1_score(all_binary_labels, all_preds, zero_division=0, average='weighted')
         test_report = report(all_binary_labels, all_preds)
 
         if test_avg_loss < self.best['loss']:
@@ -140,6 +160,7 @@ class PytorchTrainer:
         print()
 
         self.log_statistics('test', test_avg_loss, test_avg_acc, test_f1, train_step)
+        self.summary.flush()
 
     def train(self):
 
@@ -181,11 +202,12 @@ class PytorchTrainer:
 
                 train_accuracies.append((preds == binary_y).float().mean())
                 running_accuracy = torch.mean(torch.stack(train_accuracies[-self.test_evaluation_period:]))
-                train_f1 = f1_score(binary_y, preds)
+                train_f1 = f1_score(binary_y, preds, zero_division=0, average='weighted')
 
                 self.summary.add_scalar('Loss/train', loss.item(), train_step)
                 self.summary.add_scalar('Accuracy/train', running_accuracy, train_step)
                 self.summary.add_scalar('F1 Score/train', train_f1, train_step)
+                self.summary.flush()
 
                 if train_step % self.test_evaluation_period == 0:
                     self.evaluate_on_test(network, train_step)
@@ -200,3 +222,5 @@ class PytorchTrainer:
         self.write_log(f'of labels:        {self.best["labels"]}', train_step)
         self.write_log(f'with MaRIA scores:{self.best["MaRIAs"]}', train_step)
         self.write_log(self.best["report"], train_step)
+
+        self.summary.close()

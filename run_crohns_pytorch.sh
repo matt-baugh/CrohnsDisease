@@ -22,7 +22,7 @@ do
   -f=${fold} \
   -bS=64 \
   -lD=CrohnsDisease/log_attention/${TIMESTAMP}fold${fold}/ \
-  -nB=20 \
+  -nB=1200 \
   -mode="train" \
   -mP="CrohnsDisease/trained_models/best_model/fold${fold}"
 done
