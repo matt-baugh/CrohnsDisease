@@ -1,10 +1,10 @@
 import argparse
-
-
 from pytorch.pytorch_train import PytorchTrainer
-
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 
 def parseArguments():
     # Create argument parser

@@ -76,11 +76,13 @@ class PytorchTrainer:
 
     def write_log(self, line, train_step):
         self.summary.add_text('Log', line, train_step)
+        self.summary.flush()
 
     def log_statistics(self, tag, loss, acc, f1, train_step):
         self.summary.add_scalar('Loss/' + tag, loss, train_step)
         self.summary.add_scalar('Accuracy/' + tag, acc, train_step)
         self.summary.add_scalar('F1 Score/' + tag, f1, train_step)
+        self.summary.flush()
 
     def evaluate_on_test(self, network, train_step):
 
@@ -182,10 +184,7 @@ class PytorchTrainer:
                 running_accuracy = torch.mean(torch.stack(train_accuracies[-self.test_evaluation_period:]))
                 train_f1 = f1_score(binary_y, preds, zero_division=0, average='weighted')
 
-                self.summary.add_scalar('Loss/train', loss.item(), train_step)
-                self.summary.add_scalar('Accuracy/train', running_accuracy, train_step)
-                self.summary.add_scalar('F1 Score/train', train_f1, train_step)
-                self.summary.flush()
+                self.log_statistics('train', loss.item(), running_accuracy, train_f1, train_step)
 
                 if train_step % self.test_evaluation_period == 0:
                     self.evaluate_on_test(network, train_step)
