@@ -50,9 +50,9 @@ class GridAttentionBlock(nn.Module):
         self.scale = feat_shape // gate_shape
 
         # Set 1 bias=False, as will be added to mapped_g later
-        self.map_f = nn.Conv3d(feat_chan, self.inter_channels, 1, bias=False)
+        self.map_f = nn.Conv3d(feat_chan, self.inter_channels, kernel_size=1)
         self.map_g = nn.Sequential(
-            nn.Conv3d(gate_chan, self.inter_channels, 1),
+            nn.Conv3d(gate_chan, self.inter_channels, kernel_size=1),
             nn.Upsample(scale_factor=tuple(self.scale), mode='trilinear', align_corners=True)
         )
 
@@ -68,9 +68,9 @@ class GridAttentionBlock(nn.Module):
 
         attention = self.attend(mapped_f + mapped_g)
         # Shift each sample to have a minimum of zero
-        shifted_att = attention - torch.amin(attention, dim=[1, 2, 3], keepdim=True)
+        shifted_att = attention - torch.amin(attention, dim=[1, 2, 3, 4], keepdim=True)
         # Scale samples so each sum's to 1
-        scaled_att = shifted_att / torch.sum(shifted_att, dim=[1, 2, 3], keepdim=True)
+        scaled_att = shifted_att / torch.sum(shifted_att, dim=[1, 2, 3, 4], keepdim=True)
 
         return scaled_att * mapped_f
 
