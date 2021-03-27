@@ -14,6 +14,14 @@ class Patient:
         self.group = group
         self.index = index
 
+        self.axial = None
+        self.coronal = None
+        self.axial_postcon = None
+
+        self.axial_image = None
+        self.coronal_image = None
+        self.axial_postcon_image = None
+
     def get_id(self):
         return self.group + str(self.index)
 
@@ -31,10 +39,22 @@ class Patient:
     def set_ileum_coordinates(self, coords):
         self.ileum = coords
 
-    def load_image_data(self):
-        axial_path = self.axial
-        if os.path.isfile(axial_path):
-            self.set_images(sitk.ReadImage(axial_path))
+    def load_image_data(self, axial=True, coronal=False, axial_postcon=False):
+        if axial:
+            if os.path.isfile(self.axial):
+                self.axial_image = sitk.ReadImage(self.axial)
+            else:
+                print(f'Patient {self.get_id()} is missing Axial T2 image: {self.axial}')
+        if coronal:
+            if os.path.isfile(self.coronal):
+                self.coronal_image = sitk.ReadImage(self.coronal)
+            else:
+                print(f'Patient {self.get_id()} is missing Coronal T2 image: {self.coronal}')
+        if axial_postcon:
+            if os.path.isfile(self.axial_postcon):
+                self.axial_postcon_image = sitk.ReadImage(self.axial_postcon)
+            else:
+                print(f'Patient {self.get_id()} is missing Axial Postcon image: {self.axial_postcon}')
 
     def __str__(self):
         return f'{self.get_id()}: {self.axial}, {self.coronal}, {self.axial_postcon}'

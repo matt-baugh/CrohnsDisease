@@ -29,6 +29,8 @@ print('Loading images...')
 for patient in metadata.patients:
     print(f'Loading patient {patient.get_id()}')
     patient.load_image_data()
+    print()
+print()
 
 # Preprocess data
 preprocessor = Preprocessor(constant_volume_size=reference_size)

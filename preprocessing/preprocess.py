@@ -31,7 +31,7 @@ class Preprocessor:
         # Create the reference image with a zero origin, identity direction cosine matrix and dimension
         reference_origin = np.zeros(self.dimension)
         reference_direction = np.identity(self.dimension).flatten()
-        reference_spacing = [ phys_sz/(sz-1) for sz,phys_sz in zip(self.constant_volume_size, reference_physical_size) ]
+        reference_spacing = [phys_sz/(sz-1) for sz, phys_sz in zip(self.constant_volume_size, reference_physical_size)]
 
         reference_image = sitk.Image(self.constant_volume_size, patient.axial_image.GetPixelIDValue())
         reference_image.SetOrigin(reference_origin)
@@ -94,8 +94,9 @@ class Preprocessor:
         # Resample
         print(f'Resampling volumes to {self.constant_volume_size}')
         for patient in patients:
+            # Make empty image with same metadata
             reference_volume = self.generate_reference_volume(patient)
-            reference_center = np.array(reference_volume.TransformContinuousIndexToPhysicalPoint(np.array(reference_volume.GetSize())/2.0))
+            reference_center = image_physical_center(reference_volume)
 
             patient.set_images(axial_image=self.resample(patient, reference_volume, reference_center))
         # show_data([p.axial_image for p in patients], 13, 'resample')
@@ -114,7 +115,7 @@ class Preprocessor:
 
         # Modify the transformation to align the centers of the original and reference image instead of their origins.
         centering_transform = sitk.TranslationTransform(self.dimension)
-        img_center = np.array(img.TransformContinuousIndexToPhysicalPoint(np.array(img.GetSize())/2.0))
+        img_center = image_physical_center(img)
         centering_transform.SetOffset(np.array(transform.GetInverse().TransformPoint(img_center) - reference_center))
 
         combined_transform = sitk.CompositeTransform([centered_transform, centering_transform])
@@ -124,27 +125,39 @@ class Preprocessor:
 
     def region_grow_crop(self, patient):
         image = patient.axial_image
-        ileum = [patient.ileum[1], patient.ileum[0], patient.ileum[2]]
-        physical_ileum_coords = image.TransformContinuousIndexToPhysicalPoint(np.array(ileum) * 1.0)
+
+        # Define parameters and seed points of region growing
         inside_value = 20
         outside_value = 255
-        label = 1
-        label_shape_filter = sitk.LabelShapeStatisticsImageFilter()
         seed = (int(image.GetSize()[0]/2), int(image.GetSize()[1]/2), int(image.GetSize()[2]/2))
         perturbations = [-5, 5]
         seeds = [seed]
         seeds += [(seed[0], seed[1], seed[2] + p) for p in perturbations]
         seeds += [(seed[0], seed[1] + p, seed[2]) for p in perturbations]
 
+        # Apply region growing
         seg_explicit_thresholds = sitk.ConnectedThreshold(image, seedList=seeds,
                                                           lower=inside_value, upper=outside_value)
         overlay = sitk.LabelOverlay(image, seg_explicit_thresholds)
-        label_shape_filter.Execute( seg_explicit_thresholds )
+
+        # Label grown-region as 1
+        label = 1
+        label_shape_filter = sitk.LabelShapeStatisticsImageFilter()
+        label_shape_filter.Execute(seg_explicit_thresholds)
+
+        # Crop image to bounding box of grown region
         bounding_box = label_shape_filter.GetBoundingBox(label)
         cropped = sitk.RegionOfInterest(image, bounding_box[int(len(bounding_box)/2):], bounding_box[0:int(len(bounding_box)/2)])
-        crop_center = np.array(cropped.TransformContinuousIndexToPhysicalPoint(np.array(cropped.GetSize())/2.0))
-        crop_physical_quadrant_size = np.array([spc * sz for spc,sz in zip(cropped.GetSpacing(), cropped.GetSize())]) / 2.0
 
+        # Calculate and print ileum location relative to cropped image
+        # Used for manual average calculation, which is applied as hardcoded value in statisical_region_crop mode
+
+        # Calculate cropped image physical center and size
+        crop_center = image_physical_center(cropped)
+        crop_physical_quadrant_size = np.array([spc * sz for spc, sz in zip(cropped.GetSpacing(), cropped.GetSize())]) / 2.0
+        # Calculate ileum relative position inside cropped image
+        ileum = [patient.ileum[1], patient.ileum[0], patient.ileum[2]]
+        physical_ileum_coords = image.TransformContinuousIndexToPhysicalPoint(np.array(ileum) * 1.0)
         ileum_prop = (np.array(physical_ileum_coords) - crop_center) / crop_physical_quadrant_size
         str_ileum_prop = [str(x) for x in ileum_prop]
         str_ileum_prop = ('\t').join(str_ileum_prop)
