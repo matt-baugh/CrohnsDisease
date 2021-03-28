@@ -67,6 +67,8 @@ class Preprocessor:
         if ileum_crop:
             print('Cropping to Ileum...')
             for patient in patients:
+                # Provided coordinates are [coronal, sagittal, axial]
+                # convert to [sagittal, coronal, axial]
                 parsed_ileum = [patient.ileum[1], patient.ileum[0], patient.ileum[2]]
                 patient.set_images(self.crop_box_about_center(patient.axial_image, parsed_ileum, np.array([80, 80, 112])))
 

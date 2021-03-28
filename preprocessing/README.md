@@ -1,5 +1,10 @@
 # Rough description of dataset generation
 
+General Image Indexing:
+ - Terminal Ileum coordinates given as [Coronal, Sagittal, Axial]
+ - Indexing with SITK is [Sagittal, Coronal, Axial]
+ - Indexing in Numpy is [Axial, Coronal, Sagittal]
+
  1. Create Metadata
     - Constructs patient lists with filepaths
     - Reads terminal ileum locations and inflamation severity from csv

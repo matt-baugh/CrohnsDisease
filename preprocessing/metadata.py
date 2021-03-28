@@ -4,10 +4,12 @@ import numpy as np
 from enum import Enum
 import SimpleITK as sitk
 
+
 class SeriesTypes(Enum):
     AXIAL = 'Axial T2'
     CORONAL = 'Coronal T2'
     AXIAL_POSTCON = 'Axial Postcon'
+
 
 class Patient:
     def __init__(self, group, index):
@@ -21,6 +23,9 @@ class Patient:
         self.axial_image = None
         self.coronal_image = None
         self.axial_postcon_image = None
+
+        self.severity = None
+        self.ileum = None
 
     def get_id(self):
         return self.group + str(self.index)
@@ -47,7 +52,25 @@ class Patient:
                 print(f'Patient {self.get_id()} is missing Axial T2 image: {self.axial}')
         if coronal:
             if os.path.isfile(self.coronal):
-                self.coronal_image = sitk.ReadImage(self.coronal)
+                orig_coronal_image = sitk.ReadImage(self.coronal)
+                orig_size = orig_coronal_image.GetSize()
+                orig_spacing = orig_coronal_image.GetSpacing()
+                orig_direction = orig_coronal_image.GetDirection()
+
+                # Need to change the viewing direction of the coronal scan, to match the axial scans
+
+                new_origin = orig_coronal_image.TransformIndexToPhysicalPoint([0, orig_size[1] - 1, 0])
+                rotation_matrix = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+                orig_dir_np = np.reshape(np.array(orig_direction), (3, 3))
+                new_direction = (orig_dir_np @ rotation_matrix).flatten()
+
+                self.coronal_image = sitk.Resample(orig_coronal_image,
+                                                   [orig_size[0], orig_size[2], orig_size[1]],
+                                                   sitk.Transform(),
+                                                   sitk.sitkLinear,
+                                                   new_origin,
+                                                   (orig_spacing[0], orig_spacing[2], orig_spacing[1]),
+                                                   new_direction)
             else:
                 print(f'Patient {self.get_id()} is missing Coronal T2 image: {self.coronal}')
         if axial_postcon:
@@ -58,6 +81,7 @@ class Patient:
 
     def __str__(self):
         return f'{self.get_id()}: {self.axial}, {self.coronal}, {self.axial_postcon}'
+
 
 class Metadata:
     def form_path(self, patient, series_type):

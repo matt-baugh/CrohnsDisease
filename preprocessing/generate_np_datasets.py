@@ -1,5 +1,3 @@
-import numpy as np
-
 from preprocess import Preprocessor
 from metadata import Metadata
 from np_generator import NumpyGenerator
