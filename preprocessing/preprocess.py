@@ -46,7 +46,7 @@ class Preprocessor:
         ub = (lb + box_size).astype(int)
 
         img = image[lb[0]:ub[0], lb[1]:ub[1], lb[2]:ub[2]]
-        print('cropped', img.GetSize())
+        print('cropped ', img.GetSize(), ' covering ', np.array(img.GetSize()) * img.GetSpacing())
         return img
 
     def __init__(self, constant_volume_size=[256, 128, 64]):
@@ -62,10 +62,31 @@ class Preprocessor:
         if ileum_crop:
             print('Cropping to Ileum...')
             for patient in patients:
+
+                ax_t2 = patient.axial_image
+                cor_t2 = patient.coronal_image
+                ax_pc = patient.axial_postcon_image
+
                 # Provided coordinates are [coronal, sagittal, axial]
                 # convert to [sagittal, coronal, axial]
-                parsed_ileum = [patient.ileum[1], patient.ileum[0], patient.ileum[2]]
-                patient.set_images(self.crop_box_about_center(patient.axial_image, parsed_ileum, np.array([80, 80, 112])))
+                parsed_ileum = np.array([patient.ileum[1], patient.ileum[0], patient.ileum[2]])
+                parsed_ileum_physical = ax_t2.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
+                physical_crop_size = np.array([80, 80, 112])
+                # ileum_from_center = parsed_ileum_physical - image_physical_center(ax_t2)
+
+                patient.set_images(axial_image=self.crop_box_about_center(ax_t2, parsed_ileum, physical_crop_size))
+
+                if cor_t2:
+                    # coronal_ileum_phys = image_physical_center(cor_t2) + ileum_from_center
+                    coronal_index = cor_t2.TransformPhysicalPointToContinuousIndex(parsed_ileum_physical) #coronal_ileum_phys)
+                    patient.set_images(coronal_image=self.crop_box_about_center(cor_t2, coronal_index, physical_crop_size))
+
+                if ax_pc:
+                    # axial_pc_ileum_phys = image_physical_center(ax_pc) + ileum_from_center
+                    axial_pc_index = ax_pc.TransformPhysicalPointToContinuousIndex(parsed_ileum_physical) #axial_pc_ileum_phys)
+                    patient.set_images(axial_postcon_image=self.crop_box_about_center(ax_pc, axial_pc_index, physical_crop_size))
+
+                print()
 
         # Population specific cropping (fully-automatic preprocessing)
         elif region_grow_crop:
@@ -84,7 +105,7 @@ class Preprocessor:
                     pixel_ilea_mean = patient.axial_image.TransformPhysicalPointToIndex(ilea_mean)
                     patient.set_images(self.crop_box_about_center(patient.axial_image, pixel_ilea_mean, ilea_box_size))
 
-        print('Showing data...')
+        # print('Showing data...')
         # show_data([p.axial_image for p in patients], 13, 'cropped')
         # [sitk.WriteImage(patients[i].axial_image, f'images/patient_{i}.nii', True) for i in range(3)]
 

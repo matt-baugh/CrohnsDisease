@@ -38,8 +38,13 @@ class Patient:
     def set_severity(self, severity):
         self.severity = severity
 
-    def set_images(self, axial_image=None):
-        self.axial_image = axial_image
+    def set_images(self, axial_image=None, coronal_image=None, axial_postcon_image=None):
+        if axial_image:
+            self.axial_image = axial_image
+        if coronal_image:
+            self.coronal_image = coronal_image
+        if axial_postcon_image:
+            self.axial_postcon_image = axial_postcon_image
 
     def set_ileum_coordinates(self, coords):
         self.ileum = coords
