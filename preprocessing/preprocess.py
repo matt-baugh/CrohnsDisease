@@ -26,7 +26,7 @@ class Preprocessor:
         reference_physical_size = np.zeros(self.dimension)
 
         img = patient.axial_image
-        reference_physical_size[:] = [(sz-1)*spc for sz,spc,mx in zip(img.GetSize(), img.GetSpacing(), reference_physical_size)]
+        reference_physical_size[:] = [(sz-1)*spc for sz,spc in zip(img.GetSize(), img.GetSpacing())]
 
         # Create the reference image with a zero origin, identity direction cosine matrix and dimension
         reference_origin = np.zeros(self.dimension)
@@ -42,7 +42,8 @@ class Preprocessor:
 
     def crop_box_about_center(self, image, pixel_center, physical_crop_size):
         box_size = np.array([pcsz / vsz for vsz,pcsz in zip(image.GetSpacing(), physical_crop_size)])
-        lb = np.array(pixel_center - box_size/2).astype(int)
+        # Use maximum to keep it within bounds
+        lb = np.maximum(np.array(pixel_center - box_size/2).astype(int), 0)
         ub = (lb + box_size).astype(int)
 
         img = image[lb[0]:ub[0], lb[1]:ub[1], lb[2]:ub[2]]
@@ -52,7 +53,7 @@ class Preprocessor:
     def __init__(self, constant_volume_size=[256, 128, 64]):
         self.constant_volume_size = constant_volume_size
 
-    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False):
+    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False, relative_ileum_pos=False):
         print('Preprocessing...')
         self.dimension = patients[0].axial_image.GetDimension()
 
@@ -72,18 +73,18 @@ class Preprocessor:
                 parsed_ileum = np.array([patient.ileum[1], patient.ileum[0], patient.ileum[2]])
                 parsed_ileum_physical = ax_t2.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
                 physical_crop_size = np.array([80, 80, 112])
-                # ileum_from_center = parsed_ileum_physical - image_physical_center(ax_t2)
+                ileum_from_center = parsed_ileum_physical - image_physical_center(ax_t2)
 
                 patient.set_images(axial_image=self.crop_box_about_center(ax_t2, parsed_ileum, physical_crop_size))
 
                 if cor_t2:
-                    # coronal_ileum_phys = image_physical_center(cor_t2) + ileum_from_center
-                    coronal_index = cor_t2.TransformPhysicalPointToContinuousIndex(parsed_ileum_physical) #coronal_ileum_phys)
+                    coronal_ileum_phys = (image_physical_center(cor_t2) + ileum_from_center) if relative_ileum_pos else parsed_ileum_physical
+                    coronal_index = cor_t2.TransformPhysicalPointToContinuousIndex(coronal_ileum_phys)
                     patient.set_images(coronal_image=self.crop_box_about_center(cor_t2, coronal_index, physical_crop_size))
 
                 if ax_pc:
-                    # axial_pc_ileum_phys = image_physical_center(ax_pc) + ileum_from_center
-                    axial_pc_index = ax_pc.TransformPhysicalPointToContinuousIndex(parsed_ileum_physical) #axial_pc_ileum_phys)
+                    axial_pc_ileum_phys = (image_physical_center(ax_pc) + ileum_from_center) if relative_ileum_pos else parsed_ileum_physical
+                    axial_pc_index = ax_pc.TransformPhysicalPointToContinuousIndex(axial_pc_ileum_phys)
                     patient.set_images(axial_postcon_image=self.crop_box_about_center(ax_pc, axial_pc_index, physical_crop_size))
 
                 print()
