@@ -30,10 +30,16 @@ do
       mv ${BASE}\ coronal\ HASTE${ext}      ${BASE_D}\ Coronal\ T2${ext}
 
       mv ${BASE}\ Postcon\ Ax${ext}            ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ Post\ contrast\ Axial${ext}  ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ axial\ post\ contrast${ext}  ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ Postcon\ Axial${ext}         ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ POSTCON\ ax${ext}            ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ Postcon\ AX${ext}            ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ POSTCON\ Ax${ext}            ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ axial\ postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ Axial\ postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ Axial\ Postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
+      mv ${BASE}\ Ax\ Postcon${ext}            ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ Postcontrast${ext}           ${BASE_D}\ Axial\ Postcon${ext}
     done
   done
