@@ -45,12 +45,7 @@ class Preprocessor:
         lb = np.array(pixel_center - box_size/2).astype(int)
         ub = (lb + box_size).astype(int)
 
-        arr = sitk.GetArrayFromImage(image)
-        arr = arr[lb[2]:ub[2], lb[1]:ub[1], lb[0]:ub[0]]
-        img = sitk.GetImageFromArray(arr)
-        img.SetOrigin(image.GetOrigin())
-        img.SetSpacing(image.GetSpacing())
-        img.SetDirection(image.GetDirection())
+        img = image[lb[0]:ub[0], lb[1]:ub[1], lb[2]:ub[2]]
         print('cropped', img.GetSize())
         return img
 
