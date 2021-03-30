@@ -27,6 +27,9 @@ class Patient:
         self.severity = None
         self.ileum = None
 
+        self.ileum_physical = None
+        self.ileum_box_size = None
+
     def get_id(self):
         return self.group + str(self.index)
 

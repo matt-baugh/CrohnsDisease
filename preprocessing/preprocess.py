@@ -23,15 +23,12 @@ def image_physical_center(image):
 class Preprocessor:
     def generate_reference_volume(self, patient):
         # Physical image size corresponds to the largest physical size in the training set, or any other arbitrary size.
-        reference_physical_size = np.zeros(self.dimension)
-
-        img = patient.axial_image
-        reference_physical_size[:] = [(sz-1)*spc for sz,spc in zip(img.GetSize(), img.GetSpacing())]
+        reference_physical_size = patient.ileum_box_size
 
         # Create the reference image with a zero origin, identity direction cosine matrix and dimension
-        reference_origin = np.zeros(self.dimension)
+        reference_origin = patient.ileum_physical - reference_physical_size / 2
         reference_direction = np.identity(self.dimension).flatten()
-        reference_spacing = [phys_sz/(sz-1) for sz, phys_sz in zip(self.constant_volume_size, reference_physical_size)]
+        reference_spacing = [phys_sz / sz for sz, phys_sz in zip(self.constant_volume_size, reference_physical_size)]
 
         reference_image = sitk.Image(self.constant_volume_size, patient.axial_image.GetPixelIDValue())
         reference_image.SetOrigin(reference_origin)
@@ -40,54 +37,23 @@ class Preprocessor:
 
         return reference_image
 
-    def crop_box_about_center(self, image, pixel_center, physical_crop_size):
-        box_size = np.array([pcsz / vsz for vsz,pcsz in zip(image.GetSpacing(), physical_crop_size)])
-        # Use maximum to keep it within bounds
-        lb = np.maximum(np.array(pixel_center - box_size/2).astype(int), 0)
-        ub = (lb + box_size).astype(int)
-
-        img = image[lb[0]:ub[0], lb[1]:ub[1], lb[2]:ub[2]]
-        print('cropped ', img.GetSize(), ' covering ', np.array(img.GetSize()) * img.GetSpacing())
-        return img
-
     def __init__(self, constant_volume_size=[256, 128, 64]):
         self.constant_volume_size = constant_volume_size
 
-    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False, relative_ileum_pos=False):
+    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False):
         print('Preprocessing...')
         self.dimension = patients[0].axial_image.GetDimension()
 
         # Patient specific cropping to Terminal Ileum (semi-automatic preprocessing)
-        proportion_center = np.array([])
-        proportion_box_size = np.array([])
         if ileum_crop:
             print('Cropping to Ileum...')
             for patient in patients:
-
-                ax_t2 = patient.axial_image
-                cor_t2 = patient.coronal_image
-                ax_pc = patient.axial_postcon_image
-
                 # Provided coordinates are [coronal, sagittal, axial]
                 # convert to [sagittal, coronal, axial]
                 parsed_ileum = np.array([patient.ileum[1], patient.ileum[0], patient.ileum[2]])
-                parsed_ileum_physical = ax_t2.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
-                physical_crop_size = np.array([80, 80, 112])
-                ileum_from_center = parsed_ileum_physical - image_physical_center(ax_t2)
+                patient.ileum_physical = patient.axial_image.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
+                patient.ileum_box_size = np.array([80, 80, 112])
 
-                patient.set_images(axial_image=self.crop_box_about_center(ax_t2, parsed_ileum, physical_crop_size))
-
-                if cor_t2:
-                    coronal_ileum_phys = (image_physical_center(cor_t2) + ileum_from_center) if relative_ileum_pos else parsed_ileum_physical
-                    coronal_index = cor_t2.TransformPhysicalPointToContinuousIndex(coronal_ileum_phys)
-                    patient.set_images(coronal_image=self.crop_box_about_center(cor_t2, coronal_index, physical_crop_size))
-
-                if ax_pc:
-                    axial_pc_ileum_phys = (image_physical_center(ax_pc) + ileum_from_center) if relative_ileum_pos else parsed_ileum_physical
-                    axial_pc_index = ax_pc.TransformPhysicalPointToContinuousIndex(axial_pc_ileum_phys)
-                    patient.set_images(axial_postcon_image=self.crop_box_about_center(ax_pc, axial_pc_index, physical_crop_size))
-
-                print()
 
         # Population specific cropping (fully-automatic preprocessing)
         elif region_grow_crop:
@@ -101,10 +67,9 @@ class Preprocessor:
                 normalised_ilea_box_size = np.array([0.289, 0.307483, 0.4804149]) * 1.1
 
                 for patient in patients:
-                    ilea_mean = image_physical_center(patient.axial_image) + normalised_ilea_mean * patient.axial_image.GetSize()
-                    ilea_box_size = normalised_ilea_box_size * patient.axial_image.GetSize() * patient.axial_image.GetSpacing()
-                    pixel_ilea_mean = patient.axial_image.TransformPhysicalPointToIndex(ilea_mean)
-                    patient.set_images(self.crop_box_about_center(patient.axial_image, pixel_ilea_mean, ilea_box_size))
+                    image_phys_size = np.array(patient.axial_image.GetSize()) * patient.axial_image.GetSpacing()
+                    patient.ileum_physical = image_physical_center(patient.axial_image) + normalised_ilea_mean * image_phys_size
+                    patient.ileum_box_size = normalised_ilea_box_size * image_phys_size
 
         # print('Showing data...')
         # show_data([p.axial_image for p in patients], 13, 'cropped')
@@ -115,32 +80,18 @@ class Preprocessor:
         for patient in patients:
             # Make empty image with same metadata
             reference_volume = self.generate_reference_volume(patient)
-            reference_center = image_physical_center(reference_volume)
 
-            patient.set_images(axial_image=self.resample(patient, reference_volume, reference_center))
+            patient.set_images(axial_image=sitk.Resample(patient.axial_image, reference_volume))
+
+            if patient.coronal_image is not None:
+                patient.set_images(coronal_image=sitk.Resample(patient.coronal_image, reference_volume))
+
+            if patient.axial_postcon_image is not None:
+                patient.set_images(axial_postcon_image=sitk.Resample(patient.axial_postcon_image, reference_volume))
+
         # show_data([p.axial_image for p in patients], 13, 'resample')
 
         return patients
-
-    def resample(self, patient, reference_volume, reference_center):
-        img = patient.axial_image
-
-        # Transform which maps from the reference_image to the current img with the translation mapping the image
-        # origins to each other.
-        transform = sitk.TranslationTransform(self.dimension)
-        transform.SetOffset(np.array(img.GetOrigin()) - reference_volume.GetOrigin())
-        # transform.SetMatrix(img.GetDirection())
-        centered_transform = sitk.Transform(transform)
-
-        # Modify the transformation to align the centers of the original and reference image instead of their origins.
-        centering_transform = sitk.TranslationTransform(self.dimension)
-        img_center = image_physical_center(img)
-        centering_transform.SetOffset(np.array(transform.GetInverse().TransformPoint(img_center) - reference_center))
-
-        combined_transform = sitk.CompositeTransform([centered_transform, centering_transform])
-
-        # Using the linear interpolator as these are intensity images
-        return sitk.Resample(img, reference_volume, combined_transform, sitk.sitkLinear, 0.0)
 
     def region_grow_crop(self, patient):
         image = patient.axial_image
