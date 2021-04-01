@@ -38,9 +38,16 @@ do
       mv ${BASE}\ POSTCON\ Ax${ext}            ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ axial\ postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ Axial\ postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
-      mv ${BASE}\ Axial\ Postcon${ext}         ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ Ax\ Postcon${ext}            ${BASE_D}\ Axial\ Postcon${ext}
       mv ${BASE}\ Postcontrast${ext}           ${BASE_D}\ Axial\ Postcon${ext}
+
+
+      mv ${BASE}\ Postcon\ Ax\ UPPER${ext}           ${BASE_D}\ Axial\ Postcon\ Upper${ext}
+      mv ${BASE}\ Postcon\ Ax\ LOWER${ext}           ${BASE_D}\ Axial\ Postcon\ Lower${ext}
+      mv ${BASE}\ Postcontrast\ upper${ext}          ${BASE_D}\ Axial\ Postcon\ Upper${ext}
+      mv ${BASE}\ Postcontrast\ lower${ext}          ${BASE_D}\ Axial\ Postcon\ Lower${ext}
+      mv ${BASE}\ Post\ contrast\ Axial\ upper${ext} ${BASE_D}\ Axial\ Postcon\ Upper${ext}
+      mv ${BASE}\ Post\ contrast\ Axial\ lower${ext} ${BASE_D}\ Axial\ Postcon\ Lower${ext}
     done
   done
 done
