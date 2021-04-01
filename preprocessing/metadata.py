@@ -9,6 +9,8 @@ class SeriesTypes(Enum):
     AXIAL = 'Axial T2'
     CORONAL = 'Coronal T2'
     AXIAL_POSTCON = 'Axial Postcon'
+    AXIAL_POSTCON_UPPER = 'Axial Postcon Upper'
+    AXIAL_POSTCON_LOWER = 'Axial Postcon Lower'
 
 
 class Patient:
@@ -30,13 +32,24 @@ class Patient:
         self.ileum_physical = None
         self.ileum_box_size = None
 
+        self.axial_postcon_split = False
+        self.axial_postcon_upper = None
+        self.axial_postcon_lower = None
+        self.axial_postcon_upper_image = None
+        self.axial_postcon_lower_image = None
+
     def get_id(self):
         return self.group + str(self.index)
 
     def set_paths(self, axial, coronal='', axial_postcon=''):
         self.axial = axial
         self.coronal = coronal
-        self.axial_postcon = axial_postcon
+        if type(axial_postcon) is list:
+            self.axial_postcon_split = True
+            self.axial_postcon_upper = axial_postcon[0]
+            self.axial_postcon_lower = axial_postcon[1]
+        else:
+            self.axial_postcon = axial_postcon
 
     def set_severity(self, severity):
         self.severity = severity
@@ -82,8 +95,16 @@ class Patient:
             else:
                 print(f'Patient {self.get_id()} is missing Coronal T2 image: {self.coronal}')
         if axial_postcon:
-            if os.path.isfile(self.axial_postcon):
+            if not self.axial_postcon_split and os.path.isfile(self.axial_postcon):
+
                 self.axial_postcon_image = sitk.ReadImage(self.axial_postcon)
+
+            elif self.axial_postcon_split and os.path.isfile(self.axial_postcon_upper)\
+                    and os.path.isfile(self.axial_postcon_lower):
+
+                self.axial_postcon_upper_image = sitk.ReadImage(self.axial_postcon_upper)
+                self.axial_postcon_lower_image = sitk.ReadImage(self.axial_postcon_lower)
+
             else:
                 print(f'Patient {self.get_id()} is missing Axial Postcon image: {self.axial_postcon}')
 
@@ -101,6 +122,26 @@ class Metadata:
             full_path = f'{path}.{ext}'
             if os.path.isfile(full_path):
                 return full_path
+
+        # Some Axial Postcontrast scans are split into a upper and lower portion
+        if series_type is SeriesTypes.AXIAL_POSTCON.value:
+            upper_path = os.path.join(self.data_path, folder, f'{patient.get_id()} {SeriesTypes.AXIAL_POSTCON_UPPER.value}{self.dataset_tag}')
+            upper_found = False
+            full_upper_path = None
+            for ext in self.data_extensions:
+                full_upper_path = f'{upper_path}.{ext}'
+                if os.path.isfile(full_upper_path):
+                    upper_found = True
+                    break
+
+            if not upper_found:
+                return -1
+
+            lower_path = os.path.join(self.data_path, folder, f'{patient.get_id()} {SeriesTypes.AXIAL_POSTCON_LOWER.value}{self.dataset_tag}')
+            for ext in self.data_extensions:
+                full_lower_path = f'{lower_path}.{ext}'
+                if os.path.isfile(full_lower_path):
+                    return [full_upper_path, full_lower_path]
         return -1
 
     def file_list(self, patients):
