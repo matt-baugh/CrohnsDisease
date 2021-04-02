@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
+
 def show_data(data, sl, name):
     fig = plt.figure(figsize=(18, 18))
     fig.set_size_inches(15, 10)
@@ -17,8 +18,28 @@ def show_data(data, sl, name):
         plt.imshow(nda[sl], cmap='gray')
     plt.savefig(f'images/{name}.png')
 
+
 def image_physical_center(image):
     return np.array(image.TransformContinuousIndexToPhysicalPoint(np.array(image.GetSize())/2.0))
+
+
+def image_contains_box(img, box_center, box_size):
+    max_coords = img.GetSize()
+
+    # Check top of box first, as most likely to be out of bounds
+    for d_z in [0.5, -0.5]:
+        for d_x in [0.5, -0.5]:
+            for d_y in [0.5, -0.5]:
+
+                point_phys = box_center + box_size * [d_x, d_y, d_z]
+
+                point_coords = img.TransformPhysicalPointToContinuousIndex(point_phys)
+
+                for i in range(3):
+                    if point_coords[i] < 0 or point_coords[i] >= max_coords[i]:
+                        return False
+    return True
+
 
 class Preprocessor:
     def generate_reference_volume(self, patient):
@@ -37,8 +58,9 @@ class Preprocessor:
 
         return reference_image
 
-    def __init__(self, constant_volume_size=[256, 128, 64]):
+    def __init__(self, constant_volume_size=[256, 128, 64], interpolation_length=5):
         self.constant_volume_size = constant_volume_size
+        self.interpolation_length = interpolation_length
 
     def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False):
         print('Preprocessing...')
@@ -87,7 +109,73 @@ class Preprocessor:
                 patient.set_images(coronal_image=sitk.Resample(patient.coronal_image, reference_volume))
 
             if patient.axial_postcon_image is not None:
+                # If this is not None, then it must be a single postcontrast scan
                 patient.set_images(axial_postcon_image=sitk.Resample(patient.axial_postcon_image, reference_volume))
+
+            elif patient.axial_postcon_split:
+                # Otherwise, scan is split
+                # Rename scans for brevity
+                upper_img = patient.axial_postcon_upper_image
+                lower_img = patient.axial_postcon_lower_image
+
+                if image_contains_box(lower_img, patient.ileum_physical, patient.ileum_box_size):
+                    print(f'{patient.get_id()} is split, but box fits in lower scan')
+                    patient.set_images(axial_postcon_image=sitk.Resample(lower_img, reference_volume))
+                else:
+                    print(f'{patient.get_id()} is split, requiring interpolation')
+
+                    # re_lower will be edited to be the final image
+                    re_lower = sitk.Resample(lower_img, reference_volume)
+                    re_upper = sitk.Resample(upper_img, reference_volume)
+
+                    sag_sz, cor_sz, ax_sz = re_lower.GetSize()
+                    box_top = 0
+                    box_bottom = ax_sz
+
+                    # Find top and bottom of possible interpolation area
+                    # Edges of images are straight, so only need to check corners
+                    for x, y in [(0, 0), (0, cor_sz - 1), (sag_sz - 1, 0), (sag_sz - 1, cor_sz - 1)]:
+                        at_top = True
+                        for z in reversed(range(ax_sz)):
+                            if at_top:
+                                l_pix = re_lower.GetPixel((x, y, z))
+                                if l_pix != 0:
+                                    at_top = False
+                                    box_top = max(z, box_top)
+                            else:
+                                u_pix = re_upper.GetPixel((x, y, z))
+                                if u_pix == 0:
+                                    box_bottom = min(z + 1, box_bottom)
+                                    break
+
+                    re_lower[:, :, box_top + 1:] = re_upper[:, :, box_top + 1:]
+
+                    for x in range(sag_sz):
+                        for y in range(cor_sz):
+                            interp_top = box_top
+                            for z in reversed(range(box_bottom, box_top + 1)):
+
+                                curr_coords = (x, y, z)
+                                if re_lower.GetPixel(curr_coords) == 0:
+                                    re_lower.SetPixel(curr_coords, re_upper.GetPixel(curr_coords))
+                                else:
+                                    interp_top = z
+                                    break
+
+                            interp_bottom = max(box_bottom, interp_top - self.interpolation_length + 1)
+                            interp_scale = self.interpolation_length + 1
+                            for i in range(self.interpolation_length):
+                                curr_coords = (x, y, interp_bottom + i)
+                                upper_factor = i + 1
+                                lower_factor = interp_scale - upper_factor
+
+                                l_pix = re_lower.GetPixel(curr_coords)
+                                u_pix = re_upper.GetPixel(curr_coords)
+
+                                new_pix = (l_pix * lower_factor + u_pix * upper_factor) // interp_scale
+                                re_lower.SetPixel(curr_coords, new_pix)
+
+                    patient.set_images(axial_postcon_image=re_lower)
 
         # show_data([p.axial_image for p in patients], 13, 'resample')
 
@@ -133,7 +221,7 @@ class Preprocessor:
         str_ileum_prop = ('\t').join(str_ileum_prop)
 
         # Metrics for ilea distribution
-        print(f'{patient.get_id()}\t{patient.group}\t{patient.severity}\t{str_ileum_prop}')
+        # print(f'{patient.get_id()}\t{patient.group}\t{patient.severity}\t{str_ileum_prop}')
         # print(f'{patient.get_id()}\t{(np.array(physical_ileum_coords) - crop_center) / crop_physical_quadrant_size).join('\t')}')
         # print(patient.ileum, cropped.TransformPhysicalPointToIndex(physical_ileum_coords))
         return cropped
