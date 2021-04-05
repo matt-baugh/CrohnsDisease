@@ -38,17 +38,19 @@ def _center_crop_gen(out_dims):
 
 
 class MRIDataset(Dataset):
-    def __init__(self, dataset_path, train, out_dims, transforms=None):
+    def __init__(self, dataset_path, train, out_dims, transforms=None, preprocess=False):
         ## Load dataset
         np_dataset_file = np.load(dataset_path)
-        self.data = TensorDataset(torch.from_numpy(np_dataset_file['axial_t2']).float(),
-                                  torch.from_numpy(np_dataset_file['label']))
+
+        axial_data = torch.from_numpy(np_dataset_file['axial_t2']).float()
 
         self.out_dims = out_dims
+        self.train = train
+        self.preprocess = preprocess
 
         normalize_3d = T.Lambda(
             lambda x: (x - torch.mean(x, dim=[1, 2, 3], keepdim=True)) /
-                      torch.std(x, dim=[1, 2, 3], keepdim=True)
+                       torch.std(x, dim=[1, 2, 3], keepdim=True)
         )
 
         ## Define transforms to be applied to data
@@ -69,15 +71,22 @@ class MRIDataset(Dataset):
                 normalize_3d
             ])
 
+        if preprocess:
+            axial_data = torch.stack([
+                torch.squeeze(self.transforms(torch.unsqueeze(a, 0))) for a in axial_data
+            ], 0)
+        self.data = TensorDataset(axial_data,
+                                  torch.from_numpy(np_dataset_file['label']))
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        sample = self.data[idx]
+        axial_data, label = self.data[idx]
 
-        sample = (torch.unsqueeze(sample[0], 0), sample[1])
+        sample_data = torch.unsqueeze(axial_data, 0)
 
-        if self.transforms:
-            sample = (self.transforms(sample[0]), sample[1])
+        if not self.preprocess and self.transforms:
+            sample_data = self.transforms(sample_data)
 
-        return sample
+        return sample_data, label
