@@ -72,6 +72,7 @@ class MRIDataset(Dataset):
             ])
 
         self.chosen_data = [INDEX_TO_MODALITY[i] for i in range(len(INDEX_TO_MODALITY)) if input_features[i]]
+        print(self.chosen_data)
         input_data = torch.stack([torch.from_numpy(np_dataset_file[m]).float() for m in self.chosen_data], 1)
 
         if preprocess:

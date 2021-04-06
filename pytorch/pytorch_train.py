@@ -32,8 +32,9 @@ class PytorchTrainer:
         self.train_data_path = os.path.join(args.base, args.train_datapath)
         self.test_data_path = os.path.join(args.base, args.test_datapath)
 
-        self.train_dataset = MRIDataset(self.train_data_path, True, args.feature_shape)
-        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, preprocess=True)
+        self.input_features = [args.axial_t2, args.coronal_t2, args.axial_pc]
+        self.train_dataset = MRIDataset(self.train_data_path, True, args.feature_shape, self.input_features)
+        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, self.input_features, preprocess=True)
 
         self.summary = SummaryWriter(self.logdir, f'fold{self.fold}')
 
@@ -146,7 +147,9 @@ class PytorchTrainer:
 
         train_step = 0
 
-        network = PytorchResNet3D(self.feature_shape, self.attention, self.dropout_train_prob)
+        input_channels = sum(self.input_features)
+        print('Input channels: ', input_channels)
+        network = PytorchResNet3D(self.feature_shape, self.attention, self.dropout_train_prob, in_chan=input_channels)
         network = network.to(device=self.device)
         optimiser = Adam(network.parameters(), lr=self.learning_rate)
 

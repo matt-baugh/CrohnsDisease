@@ -1,8 +1,8 @@
 FOLDS=$1
 
 BASE="/vol/bitbucket/mb4617"
-RECORDS="MRI_Crohns/numpy_datasets/ti_imb/axial_t2_only"
-# RECORDS="MRI_Crohns/numpy_datasets/ti_imb_generic/axial_t2_only"
+RECORDS="MRI_Crohns/numpy_datasets/ti_imb/all_data"
+# RECORDS="MRI_Crohns/numpy_datasets/ti_imb_generic/all_data"
 TIMESTAMP=`date +%Y-%m-%d_%H:%M:%S`
 
 
@@ -15,9 +15,13 @@ do
   ${BASE} \
   ${RECORDS}_train_fold${fold}.npz \
   ${RECORDS}_test_fold${fold}.npz \
-  -record_shape 37,99,99 \
-  -feature_shape 31,87,87 \
+  -record_shape 99,99,99 \
+  -feature_shape 87,87,87 \
+  -gpus 0 \
   -py=true \
+  -axt2=1\
+  -cort2=1\
+  -axpc=1\
   -at=1 \
   -f=${fold} \
   -bS=64 \
