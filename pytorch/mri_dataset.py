@@ -5,10 +5,6 @@ from scipy.ndimage import rotate
 import numpy as np
 
 
-def _crop_out_edges(x):
-    return x[:, 2:-2, 4:-4, 4:-4]
-
-
 def _random_rotate(x):
     angle = np.random.normal(loc=0, scale=4)
     rotated_np = rotate(x, angle, axes=(2, 3), reshape=False, order=5, mode='nearest')
@@ -37,12 +33,17 @@ def _center_crop_gen(out_dims):
     return _center_crop_helper
 
 
+INDEX_TO_MODALITY = {
+    0: 'axial_t2',
+    1: 'coronal_t2',
+    2: 'axial_pc'
+}
+
+
 class MRIDataset(Dataset):
-    def __init__(self, dataset_path, train, out_dims, transforms=None, preprocess=False):
+    def __init__(self, dataset_path, train, out_dims, input_features, transforms=None, preprocess=False):
         ## Load dataset
         np_dataset_file = np.load(dataset_path)
-
-        axial_data = torch.from_numpy(np_dataset_file['axial_t2']).float()
 
         self.out_dims = out_dims
         self.train = train
@@ -58,7 +59,6 @@ class MRIDataset(Dataset):
             self.transforms = transforms
         elif train:
             self.transforms = T.Compose([
-                T.Lambda(_crop_out_edges),
                 T.Lambda(_random_rotate),
                 T.RandomHorizontalFlip(),
                 T.Lambda(_random_crop_gen(out_dims)),
@@ -71,20 +71,20 @@ class MRIDataset(Dataset):
                 normalize_3d
             ])
 
+        self.chosen_data = [INDEX_TO_MODALITY[i] for i in range(len(INDEX_TO_MODALITY)) if input_features[i]]
+        input_data = torch.stack([torch.from_numpy(np_dataset_file[m]).float() for m in self.chosen_data], 1)
+
         if preprocess:
-            axial_data = torch.stack([
-                torch.squeeze(self.transforms(torch.unsqueeze(a, 0))) for a in axial_data
-            ], 0)
-        self.data = TensorDataset(axial_data,
+            input_data = torch.stack([self.transforms(d) for d in input_data])
+
+        self.data = TensorDataset(input_data,
                                   torch.from_numpy(np_dataset_file['label']))
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        axial_data, label = self.data[idx]
-
-        sample_data = torch.unsqueeze(axial_data, 0)
+        sample_data, label = self.data[idx]
 
         if not self.preprocess and self.transforms:
             sample_data = self.transforms(sample_data)
