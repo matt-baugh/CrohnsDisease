@@ -17,16 +17,16 @@ do
   ${RECORDS}_test_fold${fold}.npz \
   -record_shape 99,99,99 \
   -feature_shape 87,87,87 \
-  -gpus 0 \
+  -gpus 1 \
   -py=true \
   -axt2=1\
-  -cort2=1\
-  -axpc=1\
+  -cort2=0\
+  -axpc=0\
   -at=1 \
   -f=${fold} \
-  -bS=64 \
+  -bS=32 \
   -lD=CrohnsDisease/log_attention/${TIMESTAMP}fold${fold}/ \
-  -nB=1200 \
+  -nB=20 \
   -mode="train" \
   -mP="CrohnsDisease/trained_models/best_model/fold${fold}"
 done
