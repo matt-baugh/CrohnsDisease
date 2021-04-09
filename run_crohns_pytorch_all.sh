@@ -43,7 +43,7 @@ for mode in ${multimodal_settings[@]}
                 -lD=CrohnsDisease/log_attention/mode${mode}loc${loc_i}att${att}${TIMESTAMP}fold${fold}/ \
                 -nB=1200 \
                 -mode="train" \
-                -mP="CrohnsDisease/trained_models/best_model/fold${fold}"
+                -mP="CrohnsDisease/trained_models/original_dataset_mode${mode}loc${loc_i}att${att}/fold${fold}"
             done
           done
       done
