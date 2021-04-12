@@ -1,14 +1,29 @@
 import torch
 import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset, TensorDataset
-from scipy.ndimage import rotate
 import numpy as np
 
 
-def _random_rotate(x):
-    angle = np.random.normal(loc=0, scale=4)
-    rotated_np = rotate(x, angle, axes=(2, 3), reshape=False, order=5, mode='nearest')
-    return torch.from_numpy(rotated_np)
+class FastRotate:
+
+    def __init__(self, std):
+        self.std = std
+
+    def __call__(self, x):
+        angle = np.random.normal(loc=0, scale=self.std)
+
+        _, _, height, width = x.shape
+        corner_angle = np.arctan(height / width)
+        rad_angle = np.radians(np.abs(angle))
+
+        distance_to_top_corner = np.hypot(height, width) * 0.5 * np.sin(corner_angle + rad_angle)
+        pad_amount = int(np.ceil(distance_to_top_corner - height // 2))
+
+        x = TF.pad(x, pad_amount, padding_mode='edge')
+
+        x = TF.rotate(x, angle, interpolation=T.InterpolationMode.BILINEAR)
+        return TF.center_crop(x, [height, width])
 
 
 def _random_crop_gen(out_dims):
@@ -59,10 +74,10 @@ class MRIDataset(Dataset):
             self.transforms = transforms
         elif train:
             self.transforms = T.Compose([
-                T.Lambda(_random_rotate),
+                FastRotate(4),
                 T.RandomHorizontalFlip(),
                 T.Lambda(_random_crop_gen(out_dims)),
-                T.Lambda(lambda x: x + 0.005 * torch.randn_like(x)),
+                T.Lambda(lambda x: x + 5 * torch.randn_like(x)),
                 normalize_3d
             ])
         else:

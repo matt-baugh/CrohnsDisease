@@ -5,9 +5,9 @@ LOCALISED_DATAPATH="MRI_Crohns/numpy_datasets/ti_imb/all_data"
 GENERALISED_DATAPATH="MRI_Crohns/numpy_datasets/ti_imb_generic/all_data"
 
 multimodal_settings=(0 1)
-attention_settings=(0 1)
-localisation_settings=(${LOCALISED_DATAPATH} ${GENERALISED_DATAPATH})
-folds=(0 1 2 3)
+attention_settings=(0)
+localisation_settings=(${LOCALISED_DATAPATH})
+folds=(0)
 
 for mode in ${multimodal_settings[@]}
   do
@@ -23,8 +23,10 @@ for mode in ${multimodal_settings[@]}
             TIMESTAMP=`date +%Y-%m-%d_%H:%M:%S`
             for fold in ${folds[@]}
             do
-#               echo "${mode} ${loc} ${loc_i} ${att} ${fold}"
-#               sleep 1
+
+              model_dir="CrohnsDisease/trained_models/2/original_dataset_mode${mode}loc${loc_i}att${att}"
+              mkdir -p "${BASE}/${model_dir}"
+
               python3 run_pytorch.py \
                 Crohns_MRI \
                 ${BASE} \
@@ -40,10 +42,10 @@ for mode in ${multimodal_settings[@]}
                 -at=${att} \
                 -f=${fold} \
                 -bS=48 \
-                -lD=CrohnsDisease/log_attention/mode${mode}loc${loc_i}att${att}${TIMESTAMP}fold${fold}/ \
-                -nB=1200 \
+                -lD=CrohnsDisease/log_second_round/mode${mode}loc${loc_i}att${att}${TIMESTAMP}fold${fold}/ \
+                -nB=20 \
                 -mode="train" \
-                -mP="CrohnsDisease/trained_models/original_dataset_mode${mode}loc${loc_i}att${att}/fold${fold}"
+                -mP="${model_dir}/fold${fold}"
             done
           done
       done
