@@ -33,8 +33,8 @@ class PytorchTrainer:
         self.test_data_path = os.path.join(args.base, args.test_datapath)
 
         self.input_features = [args.axial_t2, args.coronal_t2, args.axial_pc]
-        self.train_dataset = MRIDataset(self.train_data_path, True, args.feature_shape, self.input_features)
-        self.test_dataset = MRIDataset(self.test_data_path, False, args.feature_shape, self.input_features, preprocess=True)
+        self.train_dataset = MRIDataset(self.train_data_path, True, args.record_shape, args.feature_shape, self.input_features)
+        self.test_dataset = MRIDataset(self.test_data_path, False, args.record_shape, args.feature_shape, self.input_features, preprocess=True)
 
         self.summary = SummaryWriter(self.logdir, f'fold{self.fold}')
 
