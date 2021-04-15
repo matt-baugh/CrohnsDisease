@@ -1,5 +1,6 @@
 import argparse
 from pytorch.pytorch_train import PytorchTrainer
+import torch
 import os
 
 os.environ['CUDA_DEVICE_ORDER'] = 'PCI_BUS_ID'
@@ -51,11 +52,9 @@ if __name__ == '__main__':
     for a in args.__dict__:
         print(str(a) + ": " + str(args.__dict__[a]))
     args.attention = int(args.attention)
-    # args.localisation = int(args.localisation)
-    # args.mixedAttention = int(args.mixedAttention)
-    # args.deeper = int(args.deeper)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpus
+    print(torch.cuda.device_count(), "GPUs available!")
 
     args.feature_shape = tuple([int(x) for x in args.feature_shape.split(',')])
     args.record_shape = tuple([int(x) for x in args.record_shape.split(',')])
@@ -64,6 +63,7 @@ if __name__ == '__main__':
 
     if not args.pytorch:
         print("This only works with pytorch!!!")
+        exit()
 
     trainer = PytorchTrainer(args)
     trainer.train()

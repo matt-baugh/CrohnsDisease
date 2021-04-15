@@ -150,6 +150,11 @@ class PytorchTrainer:
         input_channels = sum(self.input_features)
         print('Input channels: ', input_channels)
         network = PytorchResNet3D(self.feature_shape, self.attention, self.dropout_train_prob, in_chan=input_channels)
+
+        if torch.cuda.device_count() > 1:
+            print("Using ", torch.cuda.device_count(), " GPUs")
+            network = torch.nn.DataParallel(network)
+
         network = network.to(device=self.device)
         optimiser = Adam(network.parameters(), lr=self.learning_rate)
 

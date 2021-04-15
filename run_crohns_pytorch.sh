@@ -17,8 +17,7 @@ do
   ${RECORDS}_test_fold${fold}.npz \
   -record_shape 99,99,99 \
   -feature_shape 87,87,87 \
-  -gpus 1 \
-  -py=true \
+  -gpus 0,1 \
   -axt2=1\
   -cort2=0\
   -axpc=0\
