@@ -1,8 +1,8 @@
 
 
 BASE="/vol/bitbucket/mb4617"
-LOCALISED_DATAPATH="MRI_Crohns/numpy_datasets/ti_imb/all_data"
-GENERALISED_DATAPATH="MRI_Crohns/numpy_datasets/ti_imb_generic/all_data"
+LOCALISED_DATAPATH="MRI_Crohns_Extended/numpy_datasets/ti/all_data_even_res"
+GENERALISED_DATAPATH="MRI_Crohns_Extended/numpy_datasets/ti_generic_larger/all_data_even_res"
 
 multimodal_settings=(0 1)
 attention_settings=(0 1)
@@ -24,7 +24,7 @@ for mode in ${multimodal_settings[@]}
             for fold in ${folds[@]}
             do
 
-              model_dir="CrohnsDisease/trained_models/2/original_dataset_mode${mode}loc${loc_i}att${att}"
+              model_dir="CrohnsDisease/trained_models/6/even_res_extended_dataset_mode${mode}loc${loc_i}att${att}"
               mkdir -p "${BASE}/${model_dir}"
 
               python3 run_pytorch.py \
@@ -34,16 +34,16 @@ for mode in ${multimodal_settings[@]}
                 ${loc}_test_fold${fold}.npz \
                 -record_shape 99,99,99 \
                 -feature_shape 87,87,87 \
-                -gpus 0,1 \
+                -gpus 1 \
                 -py=true \
                 -axt2=1\
                 -cort2=${mode}\
                 -axpc=${mode}\
                 -at=${att} \
                 -f=${fold} \
-                -bS=48 \
-                -lD=CrohnsDisease/log_second_round/mode${mode}loc${loc_i}att${att}${TIMESTAMP}fold${fold}/ \
-                -nB=1200 \
+                -bS=30 \
+                -lD=CrohnsDisease/log_extended_even_res_30/mode${mode}loc${loc_i}att${att}${TIMESTAMP}fold${fold}/ \
+                -nB=2000 \
                 -mode="train" \
                 -mP="${model_dir}/fold${fold}"
             done

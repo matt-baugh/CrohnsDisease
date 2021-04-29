@@ -15,8 +15,8 @@ do
   ${BASE} \
   ${RECORDS}_train_fold${fold}.npz \
   ${RECORDS}_test_fold${fold}.npz \
-  -record_shape 99,99,99 \
-  -feature_shape 87,87,87 \
+  -record_shape 37,99,99 \
+  -feature_shape 31,87,87 \
   -gpus 0,1 \
   -axt2=1\
   -cort2=0\

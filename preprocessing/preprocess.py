@@ -62,6 +62,8 @@ class Preprocessor:
         self.constant_volume_size = constant_volume_size
         self.interpolation_length = interpolation_length
 
+        self.ileum_props = []
+
     def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False):
         print('Preprocessing...')
         self.dimension = patients[0].axial_image.GetDimension()
@@ -85,8 +87,8 @@ class Preprocessor:
             # Then crop to proportional generic region guaranteed to contain Terminal Ileum
             if statistical_region_crop:
                 # Proportional generic region derived externally (format: [sag, cor, ax])
-                normalised_ilea_mean = np.array([-0.192, -0.1706, -0.1114])
-                normalised_ilea_box_size = np.array([0.289, 0.307483, 0.4804149]) * 1.1
+                normalised_ilea_mean = np.array([-0.1920, -0.1745, -0.1147])
+                normalised_ilea_box_size = np.array([0.2891, 0.3075, 0.5029]) * 1.2
 
                 for patient in patients:
                     image_phys_size = np.array(patient.axial_image.GetSize()) * patient.axial_image.GetSpacing()
@@ -112,7 +114,7 @@ class Preprocessor:
                 # If this is not None, then it must be a single postcontrast scan
                 patient.set_images(axial_postcon_image=sitk.Resample(patient.axial_postcon_image, reference_volume))
 
-            elif patient.axial_postcon_split:
+            elif patient.axial_postcon_split and patient.axial_postcon_upper_image is not None:
                 # Otherwise, scan is split
                 # Rename scans for brevity
                 upper_img = patient.axial_postcon_upper_image
@@ -217,6 +219,8 @@ class Preprocessor:
         ileum = [patient.ileum[1], patient.ileum[0], patient.ileum[2]]
         physical_ileum_coords = image.TransformContinuousIndexToPhysicalPoint(np.array(ileum) * 1.0)
         ileum_prop = (np.array(physical_ileum_coords) - crop_center) / crop_physical_quadrant_size
+
+        self.ileum_props.append(ileum_prop)
         str_ileum_prop = [str(x) for x in ileum_prop]
         str_ileum_prop = ('\t').join(str_ileum_prop)
 
