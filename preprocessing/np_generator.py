@@ -58,6 +58,11 @@ class NumpyGenerator:
 
         self.write_log(f'Volume size: {sitk.GetArrayFromImage(patients[0].axial_image).shape}')
 
+        if k == 1:
+            print('Creating single dataset')
+            self._generate_dataset(patients, set='all', fold='data')
+            return
+
         y = [patient.severity for patient in patients]
         skf = StratifiedKFold(n_splits=k)
         for i, (train, test) in enumerate(skf.split(patients, y)):

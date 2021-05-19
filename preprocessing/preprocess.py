@@ -76,7 +76,7 @@ class Preprocessor:
                 # convert to [sagittal, coronal, axial]
                 parsed_ileum = np.array([patient.ileum[1], patient.ileum[0], patient.ileum[2]])
                 patient.ileum_physical = patient.axial_image.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
-                patient.ileum_box_size = np.array([80, 80, 112])
+                patient.ileum_box_size = np.array([84, 84, 130])
 
 
         # Population specific cropping (fully-automatic preprocessing)
@@ -88,7 +88,7 @@ class Preprocessor:
             if statistical_region_crop:
                 # Proportional generic region derived externally (format: [sag, cor, ax])
                 normalised_ilea_mean = np.array([-0.1920, -0.1745, -0.1147])
-                normalised_ilea_box_size = np.array([0.2891, 0.3075, 0.5029]) * 1.2
+                normalised_ilea_box_size = np.array([0.2891, 0.3075, 0.5029]) * 1.25
 
                 for patient in patients:
                     image_phys_size = np.array(patient.axial_image.GetSize()) * patient.axial_image.GetSpacing()
