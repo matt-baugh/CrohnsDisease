@@ -1,10 +1,12 @@
+from typing import Optional, List
+
 import numpy as np
 import torch
 import torch.nn as nn
 
 
 class ResidualBlock3D(nn.Module):
-    def __init__(self, inchannel, outchannel, stride):
+    def __init__(self, inchannel: int, outchannel: int, stride: int):
         super(ResidualBlock3D, self).__init__()
 
         self.convs = nn.Sequential(
@@ -28,7 +30,7 @@ class ResidualBlock3D(nn.Module):
             nn.BatchNorm3d(outchannel),
             nn.ReLU(inplace=True))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor):
         out = self.convs(x) + self.shortcut(x)
 
         out = self.final(out)
@@ -38,7 +40,8 @@ class ResidualBlock3D(nn.Module):
 
 class GridAttentionBlock(nn.Module):
 
-    def __init__(self, feat_chan, feat_shape, gate_chan, gate_shape, inter_channels=None):
+    def __init__(self, feat_chan: int, feat_shape: np.ndarray, gate_chan: int, gate_shape: np.ndarray,
+                 inter_channels: Optional[int] = None):
         super(GridAttentionBlock, self).__init__()
 
         self.feat_chan = feat_chan
@@ -61,7 +64,7 @@ class GridAttentionBlock(nn.Module):
             nn.Conv3d(self.inter_channels, 1, 1)
         )
 
-    def forward(self, f, g):
+    def forward(self, f: torch.Tensor, g: torch.Tensor, return_attention_map: bool):
 
         mapped_f = self.map_f(f)
         mapped_g = self.map_g(g)
@@ -72,7 +75,10 @@ class GridAttentionBlock(nn.Module):
         # Scale samples so each sum's to 1
         scaled_att = shifted_att / torch.sum(shifted_att, dim=[1, 2, 3, 4], keepdim=True)
 
-        return scaled_att * mapped_f
+        if return_attention_map:
+            return scaled_att * mapped_f, scaled_att
+        else:
+            return scaled_att * mapped_f
 
 
 class PytorchResNet3D(nn.Module):
@@ -133,7 +139,7 @@ class PytorchResNet3D(nn.Module):
             self.in_chan = out_chan
         return nn.Sequential(*blocks)
 
-    def forward(self, x):
+    def forward(self, x, return_attention_map=False):
 
         conv1_out = self.conv1(x)
         conv2_out = self.conv2(conv1_out)
@@ -142,7 +148,14 @@ class PytorchResNet3D(nn.Module):
         out = self.classify(conv3_out)
 
         if self.use_attention:
-            attended_conv1 = self.attention_block(conv1_out, conv3_out)
+            attended_conv1 = self.attention_block(conv1_out, conv3_out, return_attention_map)
+
+            if return_attention_map:
+                attended_conv1, att_map = attended_conv1
+
             out = (out + self.classify_attention(attended_conv1)) / 2
 
-        return out
+        if return_attention_map:
+            return out, att_map
+        else:
+            return out
