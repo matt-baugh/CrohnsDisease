@@ -11,7 +11,7 @@ Classifying Crohn's disease from MRI volumes, using a 3D ResNet with a soft atte
 Capable of an average f-1 score of >0.8 using both patient-specific localisation and population-specific localisation.
 
 For description/details of old project, please view the original repository:
-[https://github.com/RobbieHolland/CrohnsDisease][https://github.com/RobbieHolland/CrohnsDisease]
+[https://github.com/RobbieHolland/CrohnsDisease](https://github.com/RobbieHolland/CrohnsDisease)
 
 ## Repo Guide
 Brief explanation of important files which are used in this iteration of the project (old files are left unchanged for reference).
