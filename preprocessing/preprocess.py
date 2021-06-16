@@ -64,7 +64,7 @@ class Preprocessor:
 
         self.ileum_props = []
 
-    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False):
+    def process(self, patients, ileum_crop=False, region_grow_crop=False, statistical_region_crop=False, custom_box=None):
         print('Preprocessing...')
         self.dimension = patients[0].axial_image.GetDimension()
 
@@ -76,7 +76,7 @@ class Preprocessor:
                 # convert to [sagittal, coronal, axial]
                 parsed_ileum = np.array([patient.ileum[1], patient.ileum[0], patient.ileum[2]])
                 patient.ileum_physical = patient.axial_image.TransformContinuousIndexToPhysicalPoint(parsed_ileum * 1.0)
-                patient.ileum_box_size = np.array([84, 84, 130])
+                patient.ileum_box_size = np.array([84, 84, 130]) if custom_box is None else custom_box
 
 
         # Population specific cropping (fully-automatic preprocessing)

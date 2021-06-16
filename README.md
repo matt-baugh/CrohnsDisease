@@ -2,42 +2,58 @@
 # CrohnsDisease
 Final year Masters project at Imperial College on tackling Crohn's Disease
 
-arXiv: https://arxiv.org/abs/1909.00276
 
-Paper was presented at MICCAI PRIME 2019, Shenzhen
+Follow up project to R. Hollands work:
+   - arXiv: https://arxiv.org/abs/1909.00276
+   - Paper was presented at MICCAI PRIME 2019, Shenzhen.
 
-In this work we establish a baseline for binary prediction of terminal ileal Crohn's disease in abnormal and healthy MRI volumes, using deep learning
+Classifying Crohn's disease from MRI volumes, using a 3D ResNet with a soft attention mechanism.
+Capable of an average f-1 score of >0.8 using both patient-specific localisation and population-specific localisation.
 
-To this end we use a small 3D ResNet with added soft attention layers
-
-# User guide
-To infer a prediction of whether or not a given 3D MR has Crohn's disease, configure <tt>/run_crohns.sh</tt> to test mode, and specify the directory of the trained model. Then execute <tt>bash run_crohns.sh</tt>.
-
-(Process to be streamlined in future update, i.e. parameters for 3D MR image path and coordinates)
+For description/details of old project, please view the original repository:
+[https://github.com/RobbieHolland/CrohnsDisease][https://github.com/RobbieHolland/CrohnsDisease]
 
 ## Repo Guide
-Brief explanation of important files
+Brief explanation of important files which are used in this iteration of the project (old files are left unchanged for reference).
 
 ### Training
-<tt>/run_crohns.sh</tt> - Run config specifying training and model parameters (root of execution)
+<tt>/run_crohns_pytorch.sh</tt> - Run config specifying training and model parameters (root of execution) for cross-validation experiment.
 
-<tt>/run.py</tt> - Parses config options and builds TF Record decode function, starts training procedure
+<tt>/run_crohns_pytorch_all.sh</tt> - Run batch of cross-validation experiments, testing each network configuration (with or without multimodal data, patient-specific localisatino, attention mechanism).
 
-<tt>/pipeline.py</tt> - Builds TF Record load pipeline using decode function
+<tt>/run_pytorch.py</tt> - Parses config options and starts training procedure.
 
-<tt>/trainer.py</tt> - Constructs and iteratively trains TF network, continually loading TF Record data through pipeline
+<tt>/pytorch/pytorch_train.py</tt> - Constructs and iteratively trains Pytorch network, logging the performance at each step.
 
-<tt>/model/resnet.py</tt> - Specification for 3D Resnet
+<tt>/pytorch/mri_dataset.py</tt> - Loads data saved in dataset by <tt>/preprocessing/np_generator.py</tt>, performs data augmentation.
 
-<tt>/model/attention.py</tt> - Specification of [soft attention mechanism](https://arxiv.org/abs/1804.05338)
+<tt>/pytorch/resnet.py</tt> - Specification for 3D Resnet, including [soft attention mechanism](https://arxiv.org/abs/1804.05338)
 
-### Data pre-processing
-Files under <tt>/preprocessing/</tt> generate the TF Records that are consumed in training
+### Preproprocessing pipeline
+Files under <tt>/preprocessing/</tt> generate the `.npy` training and testing datasets used in training.
 
-<tt>/preprocessing/metadata.py</tt> Loads labels and MRI metadata into memory
+<tt>/preprocessing/metadata.py</tt> - Loads labels and MRI data into memory.
 
-<tt>/preprocessing/preprocess.py</tt> Crops and rescales MRI volumes
+<tt>/preprocessing/preprocess.py</tt> - Extracts region of interest from MRI volumes.
 
-<tt>/preprocessing/tfrecords.py</tt> Generates a series of training and test TF Records for cross-fold evaluation (introducing duplication)
+<tt>/preprocessing/np_generator.py</tt> - Generates a series of training and test '.npy' files for cross-fold evaluation.
 
-<tt>/preprocessing/generate_tfrecords.py</tt> Configures and executes the generation process (i.e. how many cross folds)
+<tt>/preprocessing/generate_np_datasets.py</tt> - Configures and executes the generation process (i.e. how many cross folds)
+
+### ~Helpful notebooks
+
+They were useful to me, they might be useful to you.
+
+Much of the code is mini-experiments or tests I used when developing the project, so they may not work or serve an obvious purpose now.
+
+Think of them as my scrap paper when solving the problems of this project, so they may not function as the project has iterated over time.
+
+<tt>/preprocessing/multimodal_precossing_test.ipynb</tt> - Notebook going step by step through process in <tt>/preprocessing/generate_np_datasets.py</tt>, so images can be inspected at each stage.
+
+<tt>/pytorch/test_numpy_dataset.ipynb</tt> - Load data into the `MRIDataset` of <tt>/pytorch/mri_dataset.py</tt>, test data augmentation methods.
+
+<tt>/pytorch/view_numpy_dataset.ipynb</tt> - Manually load saved dataset from `.npy` file, visualise examples.
+
+<tt>/pytorch/test_trained_model.py</tt> - Load saved model and relevant dataset for specific experiment, showing results.
+
+<tt>/pytorch/compare_noise_amounts.py</tt> - Load datasets, investigate how noise effects intensity distribution.

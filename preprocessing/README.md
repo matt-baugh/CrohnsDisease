@@ -14,12 +14,13 @@ General Image Indexing:
     - Takes size of desired output, which data is resampled to later.
  4. Apply Preprocessor
     - For patient specific localisation, ileum_crop=True, region_grow_crop=False, statistical_region_crop=False
-      + Crop image to hardcoded physical size around given ileum location
+      + Region of interest hardcoded physical size around given ileum location
     - For population-based localisation, ileum_crop=False, region_grow_crop=True, statistical_region_crop=True
-      + Use region-growing from seed points in the centre of the axial scan to crop it to the patient
+      + Use region-growing from seed points in the centre of the axial T2 scan to crop it to the patient
         - Also used to find relative positions of ileum's for manual average calculation
-      + Use hard-coded ileum proportional locations to crop image to rough terminal ileum
-    - Resampling to reference size is shared
-      + Create empty image with same physical size, but reference voxel dimensions and altered spacing.
-        - (reference volume)
-      + Compute physical center of reference volume
+      + Region of interest is hardcoded box proportional to axial T2 scan patient bounding box
+    - Create reference volume of region of interest, with voxel dimensions set by step 3.
+    - Use reference volume to extract region of interest from each scan modality
+ 5. Generate datasets with NumpyGenerator
+    - Split data into folds with equal amounts of each inflammation severity label.
+    - Save each train-test split as `.npy` files.
